@@ -45,7 +45,7 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 - Tests : `test_parser.py`, `test_detector.py`, `test_database.py`, `test_api.py` ; mini-journaux dans `backend/tests/samples/`.
 - Checklist de bout en bout : celle du Stage 3 (§6.2, 13 scénarios).
 - CI : `.github/workflows/tests.yml`.
-- Durée de conservation : 30 jours, appliquée par une requête `DELETE` au démarrage (à inscrire en D11 dans `docs/decisions.md`, codée au sprint 2).
+- Durée de conservation : 30 jours, appliquée par une requête `DELETE` au démarrage (décision D11, codée au sprint 2).
 - NoSQL (référentiel RNCP) : question posée à l'équipe pédagogique ; rien à ajouter tant qu'il n'y a pas de réponse.
 
 ## Règles de sécurité (non négociables)
@@ -66,8 +66,9 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 
 ## Où en est le projet
 
-- Sprint 0 (préparation) : dépôt créé, branches main et develop, kit de documentation en place. Reste : venv, `requirements.txt`, vérification GitHub (kanban, labels, milestones, issues).
-- Sprint 1 (5 → 11 oct.) : moteur d'analyse, tâches T1.1 à T1.13.
+- Sprint 0 (préparation) : terminé le 12/10 (dépôt, kanban, labels, milestones, 13 issues du sprint 1, venv, `requirements.txt`).
+- Replanification du 12/10 (D12) : sprints décalés d'une semaine. Sprint 1 : 12 → 18 oct. ; Sprint 2 : 19 → 25 oct. ; Sprint 3 : 26 oct. → 1er nov. ; Sprint 4 : 2 → 8 nov. ; marge : 9 → 12 nov. ; **demo day le 13 novembre**. Date de la revue avec le SWE à confirmer.
+- Sprint 1 en cours : moteur d'analyse, tâches T1.1 à T1.13 (issues #1 à #13).
 - **À mettre à jour à chaque début de sprint.**
 
 ## Documents de référence

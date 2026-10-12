@@ -14,5 +14,7 @@ Chaque décision importante est notée ici, avec les options envisagées et la r
 | D8 | 30/09/2026 | Mise en production locale avec Gunicorn | Serveurs de développement, Docker | Compétence « déploiement » ; une seule commande pour la démo |
 | D9 | 01/10/2026 | Back-end organisé en classes | Fonctions dans des modules | Consigne du Stage 3 ; une responsabilité par classe ; tests plus simples |
 | D10 | 01/10/2026 | Branches main / develop / feature | Tout sur main | main reste présentable ; chaque fusion passe par une PR et la CI |
+| D11 | 12/10/2026 | Conservation des analyses : 30 jours, supprimées par une requête `DELETE` au démarrage de l'application (les IP suivent par cascade) | Durée seulement écrite dans la page Confidentialité ; suppression manuelle uniquement | RGPD (limitation de la conservation) : la durée est appliquée par le code, pas seulement annoncée ; une seule requête à écrire et à expliquer |
+| D12 | 12/10/2026 | Sprints 1 à 4 décalés d'une semaine, contenu inchangé ; marge du 9 au 12 novembre | Couper des fonctionnalités pour finir au 1er novembre | Une semaine perdue pour raison personnelle ; le demo day est le 13 novembre, ce qui laisse la place de tout livrer avec une marge |
 
 <!-- Ajouter une ligne à chaque décision qui change le périmètre, une technologie ou le planning. -->

@@ -4,9 +4,9 @@ Cinq minutes par jour de travail. Un blocage de plus d'une demi-journée = deman
 
 | Date | Hier (terminé) | Aujourd'hui (prévu) | Blocages |
 |---|---|---|---|
-| lun. 05/10 | | | |
-| mar. 06/10 | | | |
-| mer. 07/10 | | | |
-| jeu. 08/10 (mi-sprint) | | | Points terminés : … / … → ajustement ? |
-| ven. 09/10 | | | |
-| sam. 10/10 | | | |
+| lun. 12/10 | | | |
+| mar. 13/10 | | | |
+| mer. 14/10 | | | |
+| jeu. 15/10 (mi-sprint) | | | Points terminés : … / … → ajustement ? |
+| ven. 16/10 | | | |
+| sam. 17/10 | | | |
