@@ -123,6 +123,12 @@ def test_first_and_last_seen():
     assert suspect.last_seen == "Oct 12 14:00:40"
 
 
+def test_to_dict():
+    suspect = Detector().detect(fails(5, 10))[0]
+    assert suspect.to_dict()["rules"] == ["R2"]
+    assert len(suspect.to_dict()) == 7
+
+
 def test_custom_thresholds():
     detector = Detector(fast_threshold=3, fast_window=10)
     assert detector.detect(fails(3, 5))[0].rules == ["R2"]
