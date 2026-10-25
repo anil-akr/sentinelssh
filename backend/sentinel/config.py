@@ -1,4 +1,16 @@
-"""Seuils des règles de détection de SentinelSSH."""
+"""Configuration de SentinelSSH : seuils des règles, base, envoi, secret."""
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Dossier backend/ (ce fichier est dans backend/sentinel/).
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+# Charge backend/.env dans les variables d'environnement. La commande
+# « flask » le fait toute seule, mais pas Gunicorn : on le fait donc ici.
+load_dotenv(BACKEND_DIR / ".env")
 
 # R1 (attaque persistante) : nombre d'échecs dans le fichier à partir
 # duquel une IP est signalée, même si ses essais sont espacés.
@@ -15,3 +27,17 @@ FAST_WINDOW = 60
 # R3 (compromission possible) : nombre d'échecs de la même IP avant une
 # connexion réussie pour signaler un compte peut-être compromis.
 COMPROMISE_THRESHOLD = 5
+
+# Fichier SQLite (jamais commité : il contient des IP).
+DB_PATH = str(BACKEND_DIR / "sentinel.db")
+
+# Fichier envoyé : 5 Mo maximum, extensions acceptées.
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_EXTENSIONS = {".log", ".txt"}
+
+# RGPD (décision D11) : les analyses de plus de 30 jours sont supprimées
+# au démarrage de l'application.
+RETENTION_DAYS = 30
+
+# Clé qui signe le cookie de session. Lue dans .env, jamais dans le code.
+SECRET_KEY = os.environ.get("SECRET_KEY")
