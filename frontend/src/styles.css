@@ -1165,7 +1165,8 @@ tbody tr:last-child td {
   stroke: #0a1220;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
-  fill-opacity: 0.85;
+  /* Un peu transparents : des points qui se chevauchent restent visibles. */
+  fill-opacity: 0.75;
 }
 
 .map-dot-moyenne circle {
@@ -1254,15 +1255,34 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-.country-track {
+/* Barre + pourcentage sur la même ligne, alignés sous le nom du pays. */
+.country-share-line {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin: 0.35rem 0 0 2.3rem;
+}
+
+.country-track {
+  flex: 1;
   border-radius: 2px;
   background: var(--raised);
+}
+
+/* Largeur fixe : les barres de tous les pays ont la même longueur de rail. */
+.country-share {
+  width: 2.8rem;
+  font-size: 0.8rem;
+  font-family: var(--mono);
+  color: var(--muted);
+  text-align: right;
 }
 
 /* Pas de couleur ici : la classe swatch-<gravité> la donne. */
 .country-bar {
   height: 5px;
+  /* Une part minuscule reste visible (un petit trait, pas rien). */
+  min-width: 3px;
   border-radius: 2px;
 }
 
@@ -1323,6 +1343,21 @@ tbody tr:last-child td {
   .summary,
   .overview {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* minmax(0, …) : un grand nombre (« 1 287 362 ») ne peut plus élargir
+     sa case ; il rapetisse un peu et passe à la ligne s'il le faut. */
+  .overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview li {
+    padding: 0.8rem;
+  }
+
+  .overview strong {
+    font-size: 1.35rem;
+    overflow-wrap: anywhere;
   }
 
   .summary-item:nth-child(3n + 1) {

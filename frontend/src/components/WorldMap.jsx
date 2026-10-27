@@ -11,6 +11,11 @@ import SeverityBadge from './SeverityBadge.jsx'
 const WIDTH = 960
 const HEIGHT = 480
 const MAX_ZOOM = 8
+// Rayon des points, en pixels : de 3 (peu d'échecs) à 12 (l'IP la plus
+// active de l'analyse). Sans plafond, une IP à 30 000 échecs couvrait un
+// continent.
+const MIN_RADIUS = 3
+const MAX_RADIUS = 12
 
 // Vue de départ : pas de zoom (k = 1), pas de décalage (x = 0, y = 0).
 const START = { k: 1, x: 0, y: 0 }
@@ -234,6 +239,9 @@ export default function WorldMap({ suspects }) {
     )
   }), [ipsByCountry, showTooltip])
 
+  // Nombre d'échecs de l'IP la plus active : elle aura le plus gros point.
+  const maxFailures = Math.max(1, ...located.map((s) => s.failures))
+
   // Points : les plus gros d'abord, les plus petits ensuite (dessinés
   // par-dessus, ils restent visibles). [...located] fait une copie :
   // sort() ne doit pas modifier la liste d'origine.
@@ -283,9 +291,11 @@ export default function WorldMap({ suspects }) {
           {countryLayer}
           {sortedPoints.map((s) => {
             const [x, y] = projection([s.geo.longitude, s.geo.latitude])
+            // Taille relative à l'IP la plus active (part = 1 pour elle).
             // Racine carrée : la surface du point suit le nombre d'échecs.
             // Divisé par le zoom : le point garde la même taille à l'écran.
-            const radius = (4 + Math.sqrt(s.failures) * 1.2) / view.k
+            const share = Math.sqrt(s.failures / maxFailures)
+            const radius = (MIN_RADIUS + (MAX_RADIUS - MIN_RADIUS) * share) / view.k
             // Survol d'un point : les IP du même pays que ce point.
             const sameCountry = located.filter((o) => o.geo.country_code === s.geo.country_code)
             return (

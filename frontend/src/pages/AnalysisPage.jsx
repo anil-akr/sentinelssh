@@ -58,7 +58,10 @@ export default function AnalysisPage() {
                 </section>
                 <section className="card">
                   <h2>Pays d'origine</h2>
-                  <p className="muted section-help">Classés par nombre d'échecs.</p>
+                  <p className="muted section-help">
+                    Classés par nombre d'échecs. La barre montre la part de chaque pays
+                    dans le total des échecs.
+                  </p>
                   <CountryList suspects={analysis.suspects} />
                 </section>
               </div>
