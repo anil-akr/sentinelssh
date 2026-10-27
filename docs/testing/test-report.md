@@ -116,3 +116,4 @@ Faite après la carte interactive (zoom, déplacement, infobulle des IP), la dur
 | Navigateur : checklist + carte, fiche IP, légende, durée (21 scénarios) | ✅ 21/21, aucune erreur JavaScript |
 | Navigateur : zoom (boutons, molette, double-clic), déplacement, infobulle zoomée, recentrage (10 scénarios) | ✅ 10/10 ; la page ne défile pas pendant le zoom à la molette |
 | Débordement horizontal à 320, 375 et 390 px (connexion, confidentialité, accueil, 4 analyses dont vide et XSS) | ✅ 21/21 pages, 0 px |
+| Page de présentation (D15) : redirection d'un visiteur non connecté, liens vers la connexion et retour, ancre « Comment ça marche », 3 étapes et 3 gravités, logo du bandeau et de la connexion vers la présentation, bouton « Ouvrir l'application » si connecté, aucun débordement à 1366, 375 et 320 px | ✅ 17/17 ; régression rejouée (21/21, scénario 1 : redirection vers `/presentation`) |
