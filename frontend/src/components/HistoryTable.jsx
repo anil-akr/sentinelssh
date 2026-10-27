@@ -38,10 +38,7 @@ export default function HistoryTable({ analyses, onDelete }) {
               <td>{formatDate(analysis.created_at)}</td>
               <td>{analysis.filename}</td>
               <td>{analysis.suspect_count}</td>
-              {/* En rouge s'il y a au moins une alerte critique. */}
-              <td className={analysis.critical_count > 0 ? 'count-critique' : ''}>
-                {analysis.critical_count}
-              </td>
+              <td>{analysis.critical_count}</td>
               <td>
                 {/* div : un <td> en flex casserait l'alignement du tableau. */}
                 <div className="actions">

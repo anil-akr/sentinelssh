@@ -82,6 +82,8 @@ export default function AnalysisPage() {
                 <p className="muted section-help">
                   Triées de la plus grave à la moins grave. « Détails » ouvre la fiche de l'IP :
                   localisation, opérateur, durée de l'attaque et réaction conseillée.
+                  « Comptes visés » : les noms d'utilisateur que l'IP a essayés pour se
+                  connecter (les 3 plus fréquents).
                 </p>
                 <SuspectsTable suspects={analysis.suspects} />
               </section>

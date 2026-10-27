@@ -22,7 +22,7 @@ export default function SuspectsTable({ suspects }) {
             <th scope="col">Durée</th>
             <th scope="col">Origine</th>
             <th scope="col">Règles</th>
-            <th scope="col">Comptes</th>
+            <th scope="col">Comptes visés</th>
             <th scope="col"><span className="visually-hidden">Fiche</span></th>
           </tr>
         </thead>

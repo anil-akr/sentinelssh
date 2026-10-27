@@ -380,23 +380,17 @@ button:disabled {
   font-size: 0.875rem;
 }
 
+/* S'il y a des alertes critiques : un fin trait rouge en haut de la case,
+   le chiffre reste blanc comme les autres. Ombre intérieure (inset) plutôt
+   qu'une bordure : le trait ne prend pas de place, donc le chiffre reste
+   aligné avec ceux des autres cases. */
 .overview-critique {
-  border-top: 3px solid var(--critique);
-}
-
-.overview-critique strong {
-  color: var(--critique);
+  box-shadow: inset 0 3px 0 var(--critique);
 }
 
 .overview-note {
   margin: 0.6rem 0 1.25rem;
   font-size: 0.875rem;
-}
-
-/* Nombre de critiques en rouge dans l'historique. */
-.count-critique {
-  color: var(--critique);
-  font-weight: 700;
 }
 
 /* --- Connexion --------------------------------------------------------- */
@@ -1262,28 +1256,28 @@ tbody tr:last-child td {
 
 .country-track {
   margin: 0.35rem 0 0 2.3rem;
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--raised);
 }
 
 /* Pas de couleur ici : la classe swatch-<gravité> la donne. */
 .country-bar {
-  height: 6px;
-  border-radius: 3px;
+  height: 5px;
+  border-radius: 2px;
 }
 
 /* Léger halo lumineux (effet néon) de la couleur de la gravité :
-   une ombre floue de 4 px, sans décalage. */
+   une ombre floue de 3 px, sans décalage. */
 .country-bar.swatch-moyenne {
-  box-shadow: 0 0 4px var(--moyenne);
+  box-shadow: 0 0 3px var(--moyenne);
 }
 
 .country-bar.swatch-elevee {
-  box-shadow: 0 0 4px var(--elevee);
+  box-shadow: 0 0 3px var(--elevee);
 }
 
 .country-bar.swatch-critique {
-  box-shadow: 0 0 4px var(--critique);
+  box-shadow: 0 0 3px var(--critique);
 }
 
 .chart {

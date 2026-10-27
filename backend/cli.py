@@ -43,7 +43,7 @@ def main():
         return 0
 
     row = "{:<40} {:>7}  {:<9} {:<9} {}"
-    print(row.format("IP", "Échecs", "Gravité", "Règles", "Comptes"))
+    print(row.format("IP", "Échecs", "Gravité", "Règles", "Comptes visés"))
     print("-" * 90)
     for s in suspects:
         print(row.format(s.ip, s.failures, s.severity,
