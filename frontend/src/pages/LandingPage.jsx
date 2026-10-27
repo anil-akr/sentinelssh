@@ -66,7 +66,7 @@ export default function LandingPage() {
   // Bouton principal : vers l'application si connecté, sinon vers la connexion.
   let mainLink = { to: '/login', label: 'Se connecter' }
   if (connected) {
-    mainLink = { to: '/', label: 'Ouvrir l\'application' }
+    mainLink = { to: '/', label: 'Analyser un journal' }
   }
 
   return (
