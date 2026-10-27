@@ -22,10 +22,16 @@ const LEVELS = [
   },
 ]
 
-// Légende de la page d'analyse : explique les couleurs du tableau et de la carte.
-export default function SeverityLegend() {
+// Légende des gravités : explique les couleurs du tableau et de la carte.
+// compact : une seule colonne, pour une case étroite (accueil).
+export default function SeverityLegend({ compact = false }) {
+  let className = 'legend'
+  if (compact) {
+    className = 'legend legend-compact'
+  }
+
   return (
-    <ul className="legend">
+    <ul className={className}>
       {LEVELS.map((level) => (
         <li key={level.severity} className={`legend-item legend-${level.severity}`}>
           <SeverityBadge severity={level.severity} />

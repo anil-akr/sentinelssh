@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { deleteAnalysis, listAnalyses, listRecidivists } from '../api.js'
 import HistoryTable from '../components/HistoryTable.jsx'
 import RecidivistsTable from '../components/RecidivistsTable.jsx'
+import SeverityLegend from '../components/SeverityLegend.jsx'
 import UploadForm from '../components/UploadForm.jsx'
 
 // Accueil : envoi d'un fichier, historique des analyses, IP récidivistes.
@@ -26,6 +27,18 @@ export default function HomePage() {
     loadData()
   }, [loadData])
 
+  // Vue d'ensemble : on additionne les chiffres de toutes les analyses.
+  let totalLines = 0
+  let totalSuspects = 0
+  let totalCritical = 0
+  if (analyses !== null) {
+    for (const analysis of analyses) {
+      totalLines += analysis.total_lines
+      totalSuspects += analysis.suspect_count
+      totalCritical += analysis.critical_count
+    }
+  }
+
   async function handleDelete(id) {
     try {
       await deleteAnalysis(id)
@@ -44,9 +57,47 @@ export default function HomePage() {
           le serveur et propose une commande pour les bloquer.
         </p>
         <UploadForm />
+        {/* <details> : l'aide est repliée, elle ne gêne pas l'habitué. */}
+        <details className="upload-help">
+          <summary>Où trouver le fichier auth.log ?</summary>
+          <p>
+            Sur un serveur Ubuntu ou Debian, le journal SSH est{' '}
+            <code>/var/log/auth.log</code>. Il est protégé (lisible par root) : copiez-le
+            d'abord dans votre dossier, puis envoyez la copie.
+          </p>
+          <pre><code>sudo cp /var/log/auth.log ~/auth.log{'\n'}sudo chown $USER ~/auth.log</code></pre>
+        </details>
       </section>
 
       {error && <p className="error" role="alert">{error}</p>}
+
+      {analyses !== null && (
+        <section aria-label="Vue d'ensemble">
+          <ul className="overview">
+            <li>
+              <strong>{analyses.length}</strong>
+              <span>analyses gardées</span>
+            </li>
+            <li>
+              {/* toLocaleString : « 1240 » s'affiche « 1 240 ». */}
+              <strong>{totalLines.toLocaleString('fr-FR')}</strong>
+              <span>lignes lues</span>
+            </li>
+            <li>
+              <strong>{totalSuspects}</strong>
+              <span>IP suspectes</span>
+            </li>
+            {/* En rouge seulement s'il y a au moins une alerte critique. */}
+            <li className={totalCritical > 0 ? 'overview-critique' : ''}>
+              <strong>{totalCritical}</strong>
+              <span>alertes critiques</span>
+            </li>
+          </ul>
+          <p className="muted overview-note">
+            Les analyses sont supprimées automatiquement après 30 jours.
+          </p>
+        </section>
+      )}
 
       <div className="home-grid">
         <section className="card">
@@ -57,12 +108,20 @@ export default function HomePage() {
           )}
         </section>
 
-        <section className="card">
-          <h2>IP récidivistes</h2>
-          <p className="muted section-help">IP vues dans au moins 2 analyses.</p>
-          {recidivists === null && !error && <p>Chargement…</p>}
-          {recidivists !== null && <RecidivistsTable recidivists={recidivists} />}
-        </section>
+        {/* Colonne de droite : 2 cases l'une sous l'autre. */}
+        <div className="home-side">
+          <section className="card">
+            <h2>IP récidivistes</h2>
+            <p className="muted section-help">IP vues dans au moins 2 analyses.</p>
+            {recidivists === null && !error && <p>Chargement…</p>}
+            {recidivists !== null && <RecidivistsTable recidivists={recidivists} />}
+          </section>
+
+          <section className="card">
+            <h2>Les 3 niveaux de gravité</h2>
+            <SeverityLegend compact />
+          </section>
+        </div>
       </div>
 
       <footer className="footer">

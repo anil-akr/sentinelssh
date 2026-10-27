@@ -3,7 +3,7 @@ import {
 } from 'recharts'
 
 // Mêmes couleurs que les pastilles de gravité (styles.css).
-const COLORS = { moyenne: '#f2b33d', elevee: '#ff7a3d', critique: '#ff4d5e' }
+const COLORS = { moyenne: '#ffe414', elevee: '#ff7a00', critique: '#ff3344' }
 
 // Couleurs du thème sombre pour les axes et l'infobulle.
 const AXIS = { fontSize: 12, fill: '#8fa1ba' }

@@ -1,4 +1,5 @@
 import { attackSeconds, countryName, formatDuration, formatLogTime } from '../format.js'
+import BlockCommandHelp from './BlockCommandHelp.jsx'
 import CopyButton from './CopyButton.jsx'
 
 // Explication en mots de chaque règle de détection.
@@ -84,10 +85,13 @@ export default function IpDetails({ suspect }) {
       <div className="details-block">
         <h3>Réaction conseillée</h3>
         {suspect.block_command ? (
-          <div className="command">
-            <code>{suspect.block_command}</code>
-            <CopyButton text={suspect.block_command} />
-          </div>
+          <>
+            <div className="command">
+              <code>{suspect.block_command}</code>
+              <CopyButton text={suspect.block_command} />
+            </div>
+            <BlockCommandHelp command={suspect.block_command} />
+          </>
         ) : (
           <p className="muted">Surveiller cette IP : pas de blocage proposé pour une gravité moyenne.</p>
         )}

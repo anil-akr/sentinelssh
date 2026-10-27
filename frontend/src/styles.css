@@ -15,13 +15,14 @@
   --accent-ink: #06121f;    /* texte sur un bouton accent */
   --danger: #ff6b78;
   /* Gravités : couleur vive (points, barres, bords) + fond sombre teinté
-     (pastilles, bandeaux). Contraste vérifié sur fond sombre. */
-  --moyenne: #f2b33d;
+     (pastilles, bandeaux). Teintes vives, presque fluo ; contraste du texte
+     vérifié sur son fond (au moins 4,5:1, règle WCAG AA). */
+  --moyenne: #ffe414;
   --moyenne-bg: #3a2c0e;
-  --elevee: #ff7a3d;
+  --elevee: #ff7a00;
   --elevee-bg: #3d1f10;
-  --critique: #ff4d5e;
-  --critique-bg: #431520;
+  --critique: #ff3344;
+  --critique-bg: #2e0a12;
   --ok: #4cd18a;
   --ok-bg: #12352a;
   --radius: 12px;
@@ -314,6 +315,88 @@ button:disabled {
 
 .home-grid .card {
   margin-bottom: 0;
+}
+
+/* Colonne de droite de l'accueil : récidivistes puis gravités. */
+.home-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);  /* un tableau large ne l'élargit pas */
+  gap: 1.25rem;
+}
+
+/* Aides repliées : sous la zone d'envoi et sous la commande de blocage. */
+.upload-help,
+.command-help {
+  margin-top: 0.9rem;
+  font-size: 0.925rem;
+}
+
+.upload-help summary,
+.command-help summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.upload-help pre,
+.command-help pre {
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.8rem;
+  overflow-x: auto;  /* une commande longue défile au lieu de déborder */
+  border-radius: 6px;
+  background: #0a111d;
+  border: 1px solid var(--line);
+  color: #c9f0d8;
+}
+
+/* Vue d'ensemble : 4 chiffres côte à côte. */
+.overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview li {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.overview strong {
+  font-size: 1.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview span {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.overview-critique {
+  border-top: 3px solid var(--critique);
+}
+
+.overview-critique strong {
+  color: var(--critique);
+}
+
+.overview-note {
+  margin: 0.6rem 0 1.25rem;
+  font-size: 0.875rem;
+}
+
+/* Nombre de critiques en rouge dans l'historique. */
+.count-critique {
+  color: var(--critique);
+  font-weight: 700;
 }
 
 /* --- Connexion --------------------------------------------------------- */
@@ -644,6 +727,17 @@ tbody tr:last-child td {
   margin: 0;
 }
 
+/* Placé après .details-block p (même poids CSS : le dernier gagne) pour
+   garder un espace entre les paragraphes de l'aide. */
+.command-help p {
+  margin: 0.6rem 0 0;
+}
+
+.command-help ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+}
+
 .rule-list {
   margin: 0;
   padding-left: 1.1rem;
@@ -740,6 +834,11 @@ tbody tr:last-child td {
   font-size: 0.875rem;
 }
 
+/* Légende dans une case étroite (accueil) : une seule colonne. */
+.legend-compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .legend-elevee {
   border-color: var(--elevee);
 }
@@ -790,7 +889,7 @@ tbody tr:last-child td {
 .verdict-critique {
   background: linear-gradient(90deg, var(--critique-bg), var(--surface));
   border-color: var(--critique);
-  box-shadow: 0 0 40px rgb(255 77 94 / 18%);
+  box-shadow: 0 0 40px rgb(255 51 68 / 18%);
 }
 
 .verdict-critique h2 {
@@ -1162,15 +1261,29 @@ tbody tr:last-child td {
 }
 
 .country-track {
-  margin: 0.3rem 0 0 2.3rem;
-  border-radius: 2px;
+  margin: 0.35rem 0 0 2.3rem;
+  border-radius: 3px;
   background: var(--raised);
 }
 
 /* Pas de couleur ici : la classe swatch-<gravité> la donne. */
 .country-bar {
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* Léger halo lumineux (effet néon) de la couleur de la gravité :
+   une ombre floue de 4 px, sans décalage. */
+.country-bar.swatch-moyenne {
+  box-shadow: 0 0 4px var(--moyenne);
+}
+
+.country-bar.swatch-elevee {
+  box-shadow: 0 0 4px var(--elevee);
+}
+
+.country-bar.swatch-critique {
+  box-shadow: 0 0 4px var(--critique);
 }
 
 .chart {
@@ -1213,7 +1326,8 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 640px) {
-  .summary {
+  .summary,
+  .overview {
     grid-template-columns: repeat(2, 1fr);
   }
 
