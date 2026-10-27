@@ -133,6 +133,9 @@ def test_get_analysis_detail(logged_client):
     assert commands == ["iptables -A INPUT -s 203.0.113.20 -j DROP",
                         "iptables -A INPUT -s 203.0.113.10 -j DROP",
                         None]
+    # Géolocalisation : clé toujours présente (None si la base DB-IP n'est
+    # pas installée, comme dans la CI).
+    assert all("geo" in s for s in body["suspects"])
 
 
 def test_get_unknown_analysis_returns_404(logged_client):

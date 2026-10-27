@@ -16,6 +16,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from sentinel import config
 from sentinel.database import Database
 from sentinel.detector import Detector
+from sentinel.geo import GeoLocator
 from sentinel.parser import LogParser
 
 # Front React construit par « npm run build » (servi en production).
@@ -48,6 +49,9 @@ def get_db():
 # plus de 30 jours (durée de conservation, RGPD).
 get_db().init_db()
 get_db().delete_older_than(config.RETENTION_DAYS)
+
+# Bases de géolocalisation ouvertes une seule fois, au démarrage.
+geo = GeoLocator(config.GEO_CITY_DB, config.GEO_ASN_DB)
 
 
 def error(message, status):
@@ -166,6 +170,8 @@ def get_analysis(analysis_id):
             suspect["block_command"] = block_command(suspect["ip"])
         else:
             suspect["block_command"] = None
+        # Position calculée à chaque lecture, jamais stockée (D14).
+        suspect["geo"] = geo.locate(suspect["ip"])
     return jsonify(analysis)
 
 

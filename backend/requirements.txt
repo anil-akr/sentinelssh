@@ -7,6 +7,7 @@ iniconfig==2.3.1
 itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.4
+maxminddb==3.2.0
 packaging==26.3
 pluggy==1.6.0
 pycodestyle==2.15.0

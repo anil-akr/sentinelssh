@@ -15,7 +15,14 @@ frontend/dist/
 *.db
 *.log
 !demo/demo.log
+!demo/demo-monde.log
 !backend/tests/samples/*.log
+
+# Bases de géolocalisation (téléchargées par scripts/download_geodb.sh)
+backend/data/
 
 # Système
 .DS_Store
+
+# Notes de révision personnelles (non versionnées)
+docs/revision/

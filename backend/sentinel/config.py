@@ -39,5 +39,10 @@ ALLOWED_EXTENSIONS = {".log", ".txt"}
 # au démarrage de l'application.
 RETENTION_DAYS = 30
 
+# Bases de géolocalisation DB-IP Lite (décision D14), téléchargées par
+# scripts/download_geodb.sh. Absentes : l'application marche sans carte.
+GEO_CITY_DB = BACKEND_DIR / "data" / "dbip-city-lite.mmdb"
+GEO_ASN_DB = BACKEND_DIR / "data" / "dbip-asn-lite.mmdb"
+
 # Clé qui signe le cookie de session. Lue dans .env, jamais dans le code.
 SECRET_KEY = os.environ.get("SECRET_KEY")
