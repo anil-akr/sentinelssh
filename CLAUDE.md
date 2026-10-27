@@ -29,13 +29,14 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
   - `sentinel/parser.py` : `LogParser` (`parse_line`, `parse_text`).
   - `sentinel/detector.py` : `Detector` (seuils à la création ; `detect`, `_is_persistent`, `_is_fast`, `_is_compromised`, `severity_of`).
   - `sentinel/database.py` : `Database` (`connect` avec `PRAGMA foreign_keys = ON`, `init_db`, `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis`, `get_recidivists`, `get_user`, `create_user`).
-  - `sentinel/config.py` : seuils, `DB_PATH`, `MAX_UPLOAD_BYTES` (5 Mo), `ALLOWED_EXTENSIONS`, `SECRET_KEY` (lue dans `.env`).
+  - `sentinel/config.py` : seuils, `DB_PATH`, `MAX_UPLOAD_BYTES` (5 Mo), `ALLOWED_EXTENSIONS`, `SECRET_KEY` (lue dans `.env`), `GEO_CITY_DB` / `GEO_ASN_DB`.
+  - `sentinel/geo.py` : `GeoLocator` (`locate`) lit les bases DB-IP Lite de `backend/data/` (téléchargées par `scripts/download_geodb.sh`, jamais commitées) ; position calculée à la lecture, jamais stockée (D14).
   - `schema.sql` (dans `backend/`) : création des 3 tables.
   - `app.py` : 8 routes, `login_required`, `block_command(ip)`, erreurs JSON 400/401/404/413, commande `flask create-admin`, sert `frontend/dist` en production.
   - `cli.py` : mode terminal, sans base.
 - **Base** : SQLite, 3 tables : `analyses`, `suspect_ips` (FK `analysis_id` ON DELETE CASCADE), `users` (username UNIQUE, password_hash).
 - **API** (JSON, erreurs `{"error": "..."}`) : `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/analyses` (multipart, champ `file`), `GET /api/analyses`, `GET /api/analyses/<id>`, `DELETE /api/analyses/<id>`, `GET /api/recidivists`. Session obligatoire (401) sauf login et logout.
-- **Front-end** : React + Vite, React Router, Recharts, dans `frontend/`. Pages : LoginPage, HomePage, AnalysisPage, PrivacyPage. Composants : ProtectedRoute, Header, UploadForm, HistoryTable, RecidivistsTable, SummaryCards, TopIpsChart, SuspectsTable, SeverityBadge, CopyButton. Toutes les requêtes dans `src/api.js`. Proxy Vite `/api` → `http://127.0.0.1:5000` en développement.
+- **Front-end** : React + Vite, React Router, Recharts, dans `frontend/`. Pages : LoginPage, HomePage, AnalysisPage, PrivacyPage. Composants : ProtectedRoute, Header, UploadForm, HistoryTable, RecidivistsTable, SummaryCards (verdict + chiffres), TopIpsChart, SuspectsTable, SeverityBadge, CopyButton, et depuis D14 : WorldMap, CountryList, IpDetails, SeverityLegend. Fonctions de mise en forme dans `src/format.js`. Thème sombre, polices IBM Plex (npm). Toutes les requêtes dans `src/api.js`. Proxy Vite `/api` → `http://127.0.0.1:5000` en développement.
 - **Production** : `npm run build` puis `gunicorn -b 127.0.0.1:8000 app:app`.
 
 ## Précisions tirées de la conception
@@ -68,7 +69,10 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 
 - Sprint 0 (préparation) : terminé le 12/10 (dépôt, kanban, labels, milestones, 13 issues du sprint 1, venv, `requirements.txt`).
 - Replanification du 12/10 (D12) : sprints décalés d'une semaine. Sprint 1 : 12 → 18 oct. ; Sprint 2 : 19 → 25 oct. ; Sprint 3 : 26 oct. → 1er nov. ; Sprint 4 : 2 → 8 nov. ; marge : 9 → 12 nov. ; **demo day le 13 novembre**. Date de la revue avec le SWE à confirmer.
-- Sprint 1 en cours : moteur d'analyse, tâches T1.1 à T1.13 (issues #1 à #13).
+- 25/10 : changement de méthode, Claude produit le code (MR dans moins de 2 semaines) ; Anil commite et pousse lui-même.
+- Bloc 1 (moteur d'analyse, PR #19) et bloc 2 (base, API, connexion, CI, PR #20) fusionnés dans `develop` (`ed46c31`).
+- Bloc 3 (front React, thème sombre, géolocalisation DB-IP + carte (D14), collection Postman, test Loghub, branche `feature/frontend`) : écrit et testé, voir `docs/testing/test-report.md`.
+- Reste : fusion dans `main`, tag v1.0.0, lancement en production, README final.
 - **À mettre à jour à chaque début de sprint.**
 
 ## Documents de référence

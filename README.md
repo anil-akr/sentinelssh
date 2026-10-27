@@ -36,7 +36,10 @@ application web protégée par une connexion.
   | R2 — Force brute rapide | au moins 5 échecs en 60 secondes | élevée |
   | R3 — Compromission possible | une connexion réussie après au moins 5 échecs | critique |
 
-- **Résultats** : résumé chiffré, tableau trié par gravité, graphique du top 10 des IP.
+- **Résultats** : verdict, chiffres clés, **carte du monde** des IP suspectes, classement des pays d'origine,
+  graphique du top 10, légende des gravités et tableau trié par gravité avec une **fiche détaillée par IP**
+  (localisation, opérateur du réseau, durée et rythme de l'attaque, règles expliquées).
+- **Géolocalisation hors ligne** avec la base DB-IP Lite : aucune IP n'est envoyée à un service extérieur.
 - **Commande de blocage** (`iptables`) prête à copier : l'outil propose, l'administrateur décide.
 - **Historique** des analyses, suppression, liste des **IP récidivistes** (vues dans plusieurs analyses).
 - **Page Confidentialité**, interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
@@ -48,6 +51,8 @@ application web protégée par une connexion.
 - **Front-end** : React (Vite), 4 pages, toutes les requêtes dans `src/api.js`.
 - **API** : Flask, 8 routes JSON, session obligatoire sauf pour la connexion.
 - **Cœur d'analyse** : `LogParser` (lecture) et `Detector` (règles), en Python pur, sans dépendance au web ni à la base.
+- **Géolocalisation** : `GeoLocator` lit les bases locales DB-IP (`backend/data/*.mmdb`) ; la position est calculée à
+  chaque lecture d'une analyse, jamais stockée (décision D14).
 - **Données** : `Database` (requêtes SQL paramétrées) et SQLite (3 tables).
 
 Diagramme de classes : [docs/images/diagramme-classes.png](docs/images/diagramme-classes.png) ·
@@ -66,8 +71,8 @@ diagrammes de séquence : [connexion](docs/images/sequence-connexion.png), [anal
 
 | Couche | Technologies |
 |---|---|
-| Front-end | React, Vite, React Router, Recharts |
-| Back-end | Python 3, Flask, Werkzeug (hachage), python-dotenv |
+| Front-end | React, Vite, React Router, Recharts, d3-geo + world-atlas (carte), polices IBM Plex |
+| Back-end | Python 3, Flask, Werkzeug (hachage), python-dotenv, maxminddb (lecture des bases DB-IP) |
 | Base de données | SQLite (module `sqlite3`) |
 | Production | Gunicorn |
 | Qualité | pytest, pytest-cov, pycodestyle, ESLint, GitHub Actions, Postman |
@@ -88,6 +93,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env               # puis remplacer SECRET_KEY (voir le fichier)
+./scripts/download_geodb.sh        # bases de géolocalisation DB-IP (une fois par mois)
 flask --app app create-admin       # une seule fois
 flask --app app run                # API sur http://127.0.0.1:5000
 
@@ -100,8 +106,11 @@ npm run dev                        # application sur http://localhost:5173
 ## Utilisation
 
 1. Se connecter avec le compte administrateur.
-2. Envoyer un fichier `auth.log` (un exemple fictif est fourni : `demo/demo.log`).
-3. Consulter le résumé, le tableau et le graphique ; copier une commande de blocage si besoin.
+2. Envoyer un fichier `auth.log`. Deux exemples sont fournis :
+   - `demo/demo.log` : 3 IP de documentation (203.0.113.x), une par gravité ; elles n'ont pas de position sur la carte ;
+   - `demo/demo-monde.log` : 13 vraies IP d'attaquants tirées du jeu de données public
+     [Loghub](https://github.com/logpai/loghub), dans 13 pays (lignes générées pour déclencher les 3 règles).
+3. Lire le verdict, la carte et le tableau ; ouvrir la fiche d'une IP ; copier une commande de blocage si besoin.
 
 Mode terminal, sans interface web :
 
@@ -140,7 +149,8 @@ cd ../frontend && npm run lint
 - **Manuels** : collection Postman (`docs/testing/`) et checklist de bout en bout (13 scénarios).
 - **Robustesse** : dataset OpenSSH de [Loghub](https://github.com/logpai/loghub) (655 146 lignes).
 
-Résultats : [docs/testing/test-report.md](docs/testing/test-report.md). <!-- À compléter : couverture obtenue, temps d'analyse mesuré -->
+Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 77 tests, couverture de `sentinel` à 100 %,
+fichier de 5 Mo analysé en moins de 0,4 s.
 
 ## Déploiement (production)
 
@@ -162,7 +172,8 @@ Nginx et HTTPS (hors périmètre du MVP).
 - Fichiers limités à 5 Mo, extension vérifiée, contenu jamais écrit sur le disque.
 - Aucune commande système exécutée : l'application n'a pas besoin des droits root.
 - Une adresse IP est une donnée personnelle : seules les IP suspectes sont conservées, une analyse peut être
-  supprimée, et la page Confidentialité informe sur les données traitées. <!-- À compléter : durée de conservation choisie -->
+  supprimée, et la page Confidentialité informe sur les données traitées. Les analyses de plus de 30 jours sont
+  supprimées automatiquement au démarrage de l'application (décision D11).
 
 ## Organisation du projet
 
@@ -177,4 +188,5 @@ Nginx et HTTPS (hors périmètre du MVP).
 
 - Un seul format de journal (Ubuntu classique) ; pas de lecture de journald.
 - Analyse à la demande, pas en temps réel ; un seul compte administrateur.
+- Géolocalisation approximative (base gratuite) : souvent la ville de l'opérateur, pas l'adresse exacte de l'attaquant.
 - Pistes : plusieurs comptes et rôles, audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.
