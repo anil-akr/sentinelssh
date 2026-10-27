@@ -146,4 +146,4 @@ Tout le projet revu (code, documentation, configuration) puis retesté, après l
 | `format.js` (17 cas) / `npm audit` / `pip check` | ✅ 17/17 / 0 vulnérabilité / dépendances cohérentes |
 | Code : `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `console.log`, SQL construit par f-string ou concaténation, `debug=True`, TODO | ✅ aucun |
 | Historique Git : `.env`, `.db`, `.mmdb`, `node_modules`, clé secrète | ✅ jamais commités |
-
+| Fichiers de démo de plusieurs tailles (`demo/make_demo_files.sh`, découpés dans Loghub) envoyés à l'API | ✅ 0,2 Mo : 9 IP en 0,02 s ; 1 Mo : 12 IP en 0,05 s ; 11 Mo : 61 IP en 0,43 s ; 45 Mo : 370 IP (2 critiques) en 1,72 s ; 70 Mo : 413 en 0,001 s |

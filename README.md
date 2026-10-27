@@ -112,6 +112,21 @@ npm run dev                        # application sur http://localhost:5173
      [Loghub](https://github.com/logpai/loghub), dans 13 pays (lignes générées pour déclencher les 3 règles).
 3. Lire le verdict, la carte et le tableau ; ouvrir la fiche d'une IP ; copier une commande de blocage si besoin.
 
+Fichiers de démonstration de plusieurs tailles, découpés dans le vrai journal public Loghub (non commités, recréés
+par un script) :
+
+```bash
+./demo/make_demo_files.sh      # crée demo/tailles/
+```
+
+| Fichier | Taille | Lignes | Résultat attendu |
+|---|---|---|---|
+| `1-petit.log` | 0,2 Mo | 2 000 | 9 IP (élevées), 5 pays |
+| `2-moyen.log` | 1 Mo | 10 000 | 12 IP (élevées), 6 pays |
+| `3-gros.log` | 11 Mo | 100 000 | 61 IP (58 élevées, 3 moyennes), 22 pays, en 0,4 s |
+| `4-tres-gros.log` | 45 Mo | 420 000 | 370 IP (2 critiques, 341 élevées, 27 moyennes), 39 pays, en 1,7 s |
+| `5-trop-gros.log` | 70 Mo | 655 146 | refusé : « Fichier trop volumineux (50 Mo maximum) » |
+
 Mode terminal, sans interface web :
 
 ```bash

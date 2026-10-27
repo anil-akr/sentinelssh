@@ -21,6 +21,9 @@ frontend/dist/
 # Bases de géolocalisation (téléchargées par scripts/download_geodb.sh)
 backend/data/
 
+# Fichiers de démo de plusieurs tailles (créés par demo/make_demo_files.sh)
+demo/tailles/
+
 # Système
 .DS_Store
 
