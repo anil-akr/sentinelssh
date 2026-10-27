@@ -17,13 +17,20 @@ export default function IpDetails({ suspect }) {
   // Durée de l'attaque, calculée à partir des heures du journal.
   const seconds = attackSeconds(suspect.first_seen, suspect.last_seen)
 
-  // Rythme en échecs par minute. Si tout s'est passé dans la même seconde,
-  // on ne divise pas par 0 : perMinute reste null.
-  let perMinute = null
+  // Rythme de l'attaque. Si tout s'est passé dans la même seconde, on ne
+  // divise pas par 0 : rateText reste null.
+  // toLocaleString : virgule à la française (« 11,4 »), 1 chiffre après.
+  let rateText = null
   if (seconds > 0) {
-    const rate = suspect.failures / (seconds / 60)
-    // toLocaleString : virgule à la française (« 11,4 »), 1 chiffre après.
-    perMinute = rate.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
+    const perMinute = suspect.failures / (seconds / 60)
+    if (perMinute >= 1) {
+      rateText = perMinute.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' échecs par minute'
+    } else {
+      // Attaque lente (sur des heures ou des jours) : « par minute »
+      // donnerait « 0 », on compte par heure.
+      const perHour = perMinute * 60
+      rateText = perHour.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' échecs par heure'
+    }
   }
 
   // Texte de la localisation, selon ce que la base a trouvé.
@@ -64,7 +71,7 @@ export default function IpDetails({ suspect }) {
         <div>
           <dt>Durée et rythme</dt>
           <dd>{formatDuration(seconds)}</dd>
-          <dd>{perMinute ? `${perMinute} échecs par minute` : 'Tout en une seconde'}</dd>
+          <dd>{rateText !== null ? rateText : 'Tout en une seconde'}</dd>
         </div>
       </dl>
 

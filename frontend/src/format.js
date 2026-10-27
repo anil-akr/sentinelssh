@@ -16,16 +16,31 @@ export function countryName(geo) {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-// Heure du journal (« Oct 26 02:30:05 ») → objet Date. Le journal ne donne
-// pas l'année : on prend 2000, comme le back-end (année bissextile).
+// Heure enregistrée par l'API → objet Date. Deux formats :
+// - actuel, avec l'année : « 1999-12-31 23:59:40 » (une attaque qui passe
+//   le Nouvel An garde une durée juste) ;
+// - ancien, sans année : « Oct 26 02:30:05 » (analyses enregistrées avant
+//   ce changement) ; on prend 2000, comme le back-end.
 export function parseLogTime(text) {
+  if (/^\d{4}-/.test(text)) {
+    const [date, time] = text.split(' ')
+    const [year, month, day] = date.split('-').map(Number)
+    const [hours, minutes, seconds] = time.split(':').map(Number)
+    // Les mois de Date vont de 0 (janvier) à 11 (décembre).
+    return new Date(year, month - 1, day, hours, minutes, seconds)
+  }
   const [month, day, time] = text.split(/\s+/)
   const [hours, minutes, seconds] = time.split(':').map(Number)
   return new Date(2000, MONTHS.indexOf(month), Number(day), hours, minutes, seconds)
 }
 
-// Nombre de secondes → « 45 s », « 3 min 20 s » ou « 2 h 05 min ».
+// Nombre de secondes → « 45 s », « 3 min 20 s », « 2 h 05 min » ou « 28 j 04 h ».
 export function formatDuration(totalSeconds) {
+  const days = Math.floor(totalSeconds / 86400)
+  if (days > 0) {
+    const restHours = Math.floor((totalSeconds % 86400) / 3600)
+    return `${days} j ${String(restHours).padStart(2, '0')} h`
+  }
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
@@ -34,11 +49,14 @@ export function formatDuration(totalSeconds) {
   return `${seconds} s`
 }
 
-// Heure du journal en français : « Oct 26 02:30:05 » → « 26 oct. 02:30:05 ».
+// Heure en français, sans l'année (elle est fictive dans l'ancien format) :
+// « 1999-12-31 23:59:40 » ou « Dec 31 23:59:40 » → « 31 déc. 23:59:40 ».
 export function formatLogTime(text) {
   const date = parseLogTime(text)
   const day = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-  return `${day} ${text.split(/\s+/)[2]}`
+  // L'heure est toujours le dernier morceau du texte.
+  const time = text.split(/\s+/).pop()
+  return `${day} ${time}`
 }
 
 // Durée d'une attaque en secondes, de la première à la dernière tentative.

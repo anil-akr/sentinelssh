@@ -1,11 +1,15 @@
+import { useState } from 'react'
 import { countryName, totalFailures, worstSeverity } from '../format.js'
 
-// Pays montrés un par un ; les suivants sont regroupés en une seule ligne
-// (sinon 30 lignes « < 1 % » qui n'apprennent rien).
-const TOP = 10
+// Pays affichés au départ, puis à chaque clic sur « Afficher 10 pays de
+// plus » (sinon 39 lignes d'un coup, dont 30 à « < 1 % »).
+const STEP = 10
 
 // Classement des pays d'origine : nombre d'IP et d'échecs par pays.
 export default function CountryList({ suspects }) {
+  // Nombre de pays affichés ; grandit de 10 à chaque clic.
+  const [visible, setVisible] = useState(STEP)
+
   // Regroupe les IP par code pays (« CN », « FR »…) :
   // byCountry = { CN: [IP, IP], FR: [IP] }
   const byCountry = {}
@@ -30,7 +34,6 @@ export default function CountryList({ suspects }) {
       ips: ips.length,
       failures: totalFailures(ips),
       worst: worstSeverity(ips),
-      list: ips,
     })
   }
   rows.sort((a, b) => b.failures - a.failures)
@@ -45,52 +48,52 @@ export default function CountryList({ suspects }) {
     total += row.failures
   }
 
-  // Les 10 premiers pays, puis une ligne « N autres pays » pour le reste.
-  const shown = rows.slice(0, TOP)
-  const others = rows.slice(TOP)
-  if (others.length > 0) {
-    const otherIps = []
-    for (const row of others) {
-      otherIps.push(...row.list)
-    }
-    shown.push({
-      code: '',
-      name: others.length + ' autres pays',
-      ips: otherIps.length,
-      failures: totalFailures(otherIps),
-      worst: worstSeverity(otherIps),
-    })
-  }
+  const shown = rows.slice(0, visible)
+  const remaining = rows.length - shown.length
 
   return (
-    <ol className="country-list">
-      {shown.map((row) => {
-        // Part du pays en % ; « < 1 % » plutôt qu'un « 0 % » trompeur.
-        const share = (row.failures / total) * 100
-        const shareText = share < 1 ? '< 1 %' : Math.round(share) + ' %'
-        return (
-          <li key={row.name}>
-            <div className="country-line">
-              <span className="country-code">{row.code}</span>
-              <span className="country-name">{row.name}</span>
-              <span className="country-figures">
-                {row.ips} IP, {row.failures.toLocaleString('fr-FR')} échecs
-              </span>
-            </div>
-            <div className="country-share-line">
-              {/* Rail gris + barre : part du pays dans le total des échecs. */}
-              <div className="country-track">
-                {/* Couleur de la barre : gravité la plus haute du pays (comme la carte). */}
-                <div
-                  className={`country-bar swatch-${row.worst}`}
-                  style={{ width: `${share}%` }}
-                />
+    <>
+      <ol className="country-list">
+        {shown.map((row) => {
+          // Part du pays en % ; « < 1 % » plutôt qu'un « 0 % » trompeur.
+          const share = (row.failures / total) * 100
+          const shareText = share < 1 ? '< 1 %' : Math.round(share) + ' %'
+          return (
+            <li key={row.code}>
+              <div className="country-line">
+                <span className="country-code">{row.code}</span>
+                <span className="country-name">{row.name}</span>
+                <span className="country-figures">
+                  {row.ips} IP, {row.failures.toLocaleString('fr-FR')} échecs
+                </span>
               </div>
-              <span className="country-share">{shareText}</span>
-            </div>
-          </li>
-        )
-      })}
-    </ol>
+              <div className="country-share-line">
+                {/* Rail gris + barre : part du pays dans le total des échecs. */}
+                <div className="country-track">
+                  {/* Couleur de la barre : gravité la plus haute du pays (comme la carte). */}
+                  <div
+                    className={`country-bar swatch-${row.worst}`}
+                    style={{ width: `${share}%` }}
+                  />
+                </div>
+                <span className="country-share">{shareText}</span>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+      {/* Encore des pays cachés : on en montre 10 de plus. Tous visibles
+          (et plus de 10) : on peut revenir aux 10 premiers. */}
+      {remaining > 0 && (
+        <button type="button" className="button-secondary country-more" onClick={() => setVisible(visible + STEP)}>
+          Afficher {Math.min(STEP, remaining)} pays de plus ({remaining} restants)
+        </button>
+      )}
+      {remaining === 0 && rows.length > STEP && (
+        <button type="button" className="button-secondary country-more" onClick={() => setVisible(STEP)}>
+          Réduire la liste
+        </button>
+      )}
+    </>
   )
 }

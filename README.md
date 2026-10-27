@@ -164,7 +164,7 @@ cd ../frontend && npm run lint
 - **Manuels** : collection Postman (`docs/testing/`) et checklist de bout en bout (13 scénarios), rejouée dans un vrai navigateur.
 - **Robustesse** : dataset OpenSSH de [Loghub](https://github.com/logpai/loghub) (655 146 lignes).
 
-Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 93 tests, couverture de `sentinel` à 100 %,
+Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 97 tests, couverture de `sentinel` à 100 %,
 fichier de 45 Mo analysé en 1,7 s par l'API.
 
 ## Déploiement (production)
@@ -201,7 +201,7 @@ Nginx et HTTPS (hors périmètre du MVP).
 
 ## Limites et évolutions
 
-- Deux formats de date lus : syslog classique (`Oct 12 14:03:21`) et ISO 8601 d'Ubuntu 23.10 et plus (`2026-10-25T17:17:03.249675+01:00`) ; pas de lecture de journald.
+- Deux formats de date lus : syslog classique (`Oct 12 14:03:21`, sans année : le passage du Nouvel An est repéré quand le mois recule, D18) et ISO 8601 d'Ubuntu 23.10 et plus (`2026-10-25T17:17:03.249675+01:00`) ; pas de lecture de journald.
 - Analyse à la demande, pas en temps réel ; un seul compte administrateur.
 - Géolocalisation approximative (base gratuite) : souvent la ville de l'opérateur, pas l'adresse exacte de l'attaquant.
 - Pistes : plusieurs comptes et rôles, audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.

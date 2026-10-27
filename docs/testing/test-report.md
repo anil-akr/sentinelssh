@@ -10,7 +10,7 @@ Commandes : `pytest --cov=sentinel` (dans `backend/`), `pycodestyle sentinel app
 |---|---|---|---|
 | Unitaires (LogParser 17, Detector 23, Database 13, GeoLocator 8) | 61 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py` |
 | Intégration (8 routes de l'API, dont fichier jamais écrit sur le disque et id trop grand) | 32 | ✅ | `backend/tests/test_api.py` |
-| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 235 instructions, 0 manquée (93 tests au total) |
+| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 253 instructions, 0 manquée (97 tests au total) |
 | pycodestyle / ESLint | — | ✅ 0 erreur | |
 
 Les mêmes vérifications tournent dans la CI (`.github/workflows/tests.yml`) : un job `backend` et un job `frontend` (lint + construction).
@@ -89,6 +89,8 @@ Limite connue : Flask mesure la taille de **toute** la requête (fichier + quelq
 | Fichier envoyé de plus de 500 Ko écrit par Werkzeug dans un fichier temporaire sur le disque, contrairement à la règle RGPD « jamais écrit sur le disque » (trouvé en vérifiant la limite de 50 Mo) | majeur (RGPD) | corrigé : `MemoryRequest` dans `backend/app.py` garde toujours le fichier en mémoire (D17) ; test `test_upload_is_never_written_to_disk` |
 | `GET` ou `DELETE /api/analyses/99999999999999999999` : erreur 500 (`OverflowError`, entier trop grand pour SQLite) au lieu de 404 | mineur | corrigé : `SQLITE_MAX_INT` dans `backend/sentinel/database.py` ; test `test_huge_id_returns_404` (GET et DELETE) |
 | Téléchargement des bases DB-IP interrompu : la base existante était remplacée par un fichier tronqué, et l'application ne démarrait plus (`InvalidDatabaseError`) | majeur (démo) | corrigé : `scripts/download_geodb.sh` écrit dans un `.tmp` puis le renomme seulement si tout a réussi ; échec simulé (fausse adresse) : ancienne base intacte |
+| Journal qui passe le Nouvel An dans l'ancien format (Loghub : décembre → janvier) : le 1er janvier était daté **avant** le 31 décembre (même année 2000), d'où une attaque de « 8 783 h, du 1 janv. au 31 déc. » | moyen (affichage faux) | corrigé (D18) : `parse_text` change d'année quand le mois recule ; dates enregistrées avec l'année ; `format.js` lit les 2 formats ; 4 tests ajoutés. Loghub 45 Mo : « 23 j 15 h, du 10 déc. au 2 janv. » |
+| Fiche d'une IP lente : « 0 échecs par minute » (arrondi) | mineur | corrigé : rythme compté par heure sous 1 échec par minute (« 0,1 échecs par heure ») |
 | Analyse de 45 Mo (371 IP) : page de détail affichée en 6,5 s, car la carte testait chaque IP contre les 241 pays avec `geoContains` (4,7 s de calcul) | moyen (lenteur) | corrigé : rectangle englobant de chaque pays (`geoBounds`) testé d'abord dans `WorldMap.jsx` ; 0,16 s, mêmes résultats ; page affichée en 0,85 s |
 
 ## 6. Revue de qualité du code (26/10/2026)
@@ -147,3 +149,4 @@ Tout le projet revu (code, documentation, configuration) puis retesté, après l
 | Code : `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `console.log`, SQL construit par f-string ou concaténation, `debug=True`, TODO | ✅ aucun |
 | Historique Git : `.env`, `.db`, `.mmdb`, `node_modules`, clé secrète | ✅ jamais commités |
 | Fichiers de démo de plusieurs tailles (`demo/make_demo_files.sh`, découpés dans Loghub) envoyés à l'API | ✅ 0,2 Mo : 9 IP en 0,02 s ; 1 Mo : 12 IP en 0,05 s ; 11 Mo : 61 IP en 0,43 s ; 45 Mo : 370 IP (2 critiques) en 1,72 s ; 70 Mo : 413 en 0,001 s |
+| Après D18 et la nouvelle liste des pays : pytest, pycodestyle, ESLint, build, `format.js` (10 cas : Nouvel An, ancien format, jours), navigateur (régression 21/21, zoom 10/10, débordements 21/21, présentation 17/17, liste des pays 10 → 20 → 30 → 39 → « Réduire ») | ✅ 97 tests, 100 % ; 0 erreur ; ancienne analyse (dates sans année) toujours affichée |

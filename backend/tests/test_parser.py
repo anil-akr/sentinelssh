@@ -130,6 +130,40 @@ def test_mixed_formats_in_one_file():
     assert (total_lines, ignored_lines) == (2, 0)
 
 
+# --- Passage du Nouvel An dans l'ancien format (sans année) -----------
+
+def test_new_year_in_old_format():
+    events, _, _ = LogParser().parse_text(read_sample("new_year.log"))
+    # Décembre = l'année d'avant (1999), janvier = 2000.
+    assert events[0].time == datetime(1999, 12, 31, 23, 59, 40)
+    assert events[-1].time == datetime(2000, 1, 1, 0, 0, 20)
+    assert events[0].time < events[-1].time
+
+
+def test_leap_day_after_new_year():
+    # Décembre 2023 → février 2024 : le 29 février tombe bien en 2000.
+    text = ("Dec 31 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "Feb 29 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n")
+    events, _, _ = LogParser().parse_text(text)
+    assert [e.time.year for e in events] == [1999, 2000]
+    assert events[1].time.day == 29
+
+
+def test_leap_day_in_a_non_leap_year_is_ignored():
+    # Journal de plus de 10 mois : le 29 février tombe en 1999.
+    text = ("Feb 29 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "Dec 31 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "Jan  1 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n")
+    events, total_lines, ignored_lines = LogParser().parse_text(text)
+    assert len(events) == 2
+    assert (total_lines, ignored_lines) == (3, 1)
+
+
 def test_parse_text_counters():
     events, total_lines, ignored_lines = LogParser().parse_text(
         read_sample("clean.log"))

@@ -1300,6 +1300,12 @@ tbody tr:last-child td {
   box-shadow: 0 0 3px var(--critique);
 }
 
+/* Bouton sous la liste des pays, sur toute la largeur. */
+.country-more {
+  width: 100%;
+  margin-top: 0.3rem;
+}
+
 .chart {
   width: 100%;
   min-height: 120px;

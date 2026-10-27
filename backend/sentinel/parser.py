@@ -53,11 +53,38 @@ class LogParser:
             time=time, kind=kind, user=match.group(1), ip=match.group(2))
 
     def parse_text(self, text):
-        """Renvoie les events, le nombre de lignes lues et ignorées."""
+        """Renvoie les events, le nombre de lignes lues et ignorées.
+
+        Ancien format, sans année : si le mois recule (décembre puis
+        janvier), le journal a passé le Nouvel An. La dernière année du
+        fichier reste self.year (2000, bissextile) et les années
+        précédentes reculent d'un an à chaque passage.
+        """
         lines = text.splitlines()
-        events = []
+        found = []  # (event, numéro de l'année ou None pour le format ISO)
+        year_number = 0
+        last_month = None
         for line in lines:
             event = self.parse_line(line)
-            if event is not None:
-                events.append(event)
+            if event is None:
+                continue
+            if line[:4].isdigit():
+                found.append((event, None))  # vraie année déjà lue
+                continue
+            if last_month is not None and event.time.month < last_month:
+                year_number += 1
+            last_month = event.time.month
+            found.append((event, year_number))
+
+        events = []
+        for event, number in found:
+            if number is not None:
+                year = self.year - (year_number - number)
+                try:
+                    event.time = event.time.replace(year=year)
+                except ValueError:
+                    # 29 février tombé dans une année non bissextile
+                    # (journal de plus de 10 mois) : ligne ignorée.
+                    continue
+            events.append(event)
         return events, len(lines), len(lines) - len(events)

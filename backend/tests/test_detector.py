@@ -58,6 +58,14 @@ def test_iso_sample_across_new_year_is_fast():
     assert suspects[0].rules == ["R2"]
 
 
+def test_new_year_in_old_format_is_fast():
+    # Ancien format : 5 échecs en 40 s à cheval sur le Nouvel An.
+    suspects = detect_sample("new_year.log")
+    assert suspects[0].rules == ["R2"]
+    assert suspects[0].first_seen == "1999-12-31 23:59:40"
+    assert suspects[0].last_seen == "2000-01-01 00:00:20"
+
+
 # --- R1 : attaque persistante ------------------------------------------
 
 def test_twenty_spread_failures_is_persistent():
@@ -127,8 +135,8 @@ def test_three_most_targeted_users():
 
 def test_first_and_last_seen():
     suspect = Detector().detect(fails(5, 10))[0]
-    assert suspect.first_seen == "Oct 12 14:00:00"
-    assert suspect.last_seen == "Oct 12 14:00:40"
+    assert suspect.first_seen == "2000-10-12 14:00:00"
+    assert suspect.last_seen == "2000-10-12 14:00:40"
 
 
 def test_to_dict():

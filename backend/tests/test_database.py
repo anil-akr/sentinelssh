@@ -12,8 +12,8 @@ def suspect(ip="203.0.113.1", failures=5, severity="elevee", rules=("R2",)):
     """Fabrique une SuspectIP de test."""
     return SuspectIP(ip=ip, failures=failures, severity=severity,
                      rules=list(rules), users=["root", "admin"],
-                     first_seen="Oct 12 14:00:00",
-                     last_seen="Oct 12 14:00:40")
+                     first_seen="2000-10-12 14:00:00",
+                     last_seen="2000-10-12 14:00:40")
 
 
 def count_suspect_ips(db):

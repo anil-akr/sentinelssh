@@ -19,7 +19,7 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
   - R2 force brute rapide : ≥ 5 échecs en ≤ 60 s → élevée
   - R3 compromission possible : connexion réussie après ≥ 5 échecs de la même IP → critique
 - Lignes lues : `Failed password` (y compris « for invalid user ») = échec ; `Accepted password` / `Accepted publickey` = succès ; le reste est ignoré mais compté. La ligne `Invalid user … from …` est ignorée (sinon double comptage).
-- Formats de date lus (D16) : syslog classique (`Oct 12 14:03:21`), sans année → convertir avec une année bissextile fixe (2000) ; et nouveau format Ubuntu 23.10+ (`2026-10-25T17:17:03.249675+01:00`) → vraie année gardée, microsecondes et fuseau retirés.
+- Formats de date lus (D16) : syslog classique (`Oct 12 14:03:21`), sans année → convertir avec une année bissextile fixe (2000), qui recule d'un an pour la partie d'avant un Nouvel An (D18) ; et nouveau format Ubuntu 23.10+ (`2026-10-25T17:17:03.249675+01:00`) → vraie année gardée, microsecondes et fuseau retirés.
 - Commande de blocage proposée (`iptables`, ou `ip6tables` pour une IPv6), jamais exécutée.
 
 ## Architecture (décidée, ne pas changer sans me le signaler)
@@ -43,6 +43,7 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 
 - Gravité : exactement `"moyenne"`, `"elevee"` (sans accent), `"critique"` — ce sont les valeurs du `CHECK` de la table `suspect_ips`.
 - `create-admin` refuse un mot de passe de moins de 12 caractères.
+- `first_seen` / `last_seen` enregistrés avec l'année (`1999-12-31 23:59:40`, D18) ; `format.js` lit aussi l'ancien format sans année.
 - Tests : `test_parser.py`, `test_detector.py`, `test_database.py`, `test_api.py`, `test_geo.py` ; mini-journaux dans `backend/tests/samples/`.
 - Checklist de bout en bout : celle du Stage 3 (§6.2, 13 scénarios).
 - CI : `.github/workflows/tests.yml`.
