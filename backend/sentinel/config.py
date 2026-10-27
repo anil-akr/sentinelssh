@@ -31,8 +31,9 @@ COMPROMISE_THRESHOLD = 5
 # Fichier SQLite (jamais commité : il contient des IP).
 DB_PATH = str(BACKEND_DIR / "sentinel.db")
 
-# Fichier envoyé : 5 Mo maximum, extensions acceptées.
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+# Fichier envoyé : 50 Mo maximum (D17), extensions acceptées.
+MAX_UPLOAD_MB = 50
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 ALLOWED_EXTENSIONS = {".log", ".txt"}
 
 # RGPD (décision D11) : les analyses de plus de 30 jours sont supprimées

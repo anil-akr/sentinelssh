@@ -16,9 +16,14 @@ mkdir -p "$DATA_DIR"
 # city : pays, ville, coordonnées. asn : opérateur du réseau (AS).
 for kind in city asn; do
     url="https://download.db-ip.com/free/dbip-${kind}-lite-${MONTH}.mmdb.gz"
+    target="$DATA_DIR/dbip-${kind}-lite.mmdb"
     echo "Téléchargement de $url"
     # Fichier compressé (.gz) : gunzip le décompresse à la volée.
-    curl -fSL "$url" | gunzip > "$DATA_DIR/dbip-${kind}-lite.mmdb"
+    # On écrit d'abord dans un .tmp : si le téléchargement échoue, set -e
+    # arrête le script avant le mv, et l'ancienne base reste intacte
+    # (une base tronquée empêcherait l'application de démarrer).
+    curl -fSL "$url" | gunzip > "$target.tmp"
+    mv "$target.tmp" "$target"
 done
 
 echo "Bases installées dans backend/data/."

@@ -29,7 +29,7 @@ export default function UploadForm() {
 
   return (
     <form className="upload-form" onSubmit={handleSubmit}>
-      <label htmlFor="file">Fichier .log ou .txt, 5 Mo maximum</label>
+      <label htmlFor="file">Fichier .log ou .txt, 50 Mo maximum</label>
       <div className="upload-row">
         <input
           id="file"

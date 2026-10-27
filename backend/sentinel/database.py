@@ -11,6 +11,10 @@ from pathlib import Path
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 
+# Plus grand entier que SQLite sait stocker. Un id plus grand ne peut
+# exister ; sans ce test, sqlite3 lèverait OverflowError (erreur 500).
+SQLITE_MAX_INT = 2 ** 63 - 1
+
 
 def split_list(value):
     """Transforme « R2,R3 » en ["R2", "R3"] (et un texte vide en [])."""
@@ -73,6 +77,8 @@ class Database:
 
     def get_analysis(self, analysis_id):
         """Renvoie l'analyse et ses IP triées, ou None si l'id est inconnu."""
+        if analysis_id > SQLITE_MAX_INT:
+            return None
         with closing(self.connect()) as conn:
             row = conn.execute("SELECT * FROM analyses WHERE id = ?",
                                (analysis_id,)).fetchone()
@@ -101,6 +107,8 @@ class Database:
         Renvoie True si une analyse a été supprimée, False si l'id
         n'existait pas.
         """
+        if analysis_id > SQLITE_MAX_INT:
+            return False
         with closing(self.connect()) as conn:
             cursor = conn.execute("DELETE FROM analyses WHERE id = ?",
                                   (analysis_id,))

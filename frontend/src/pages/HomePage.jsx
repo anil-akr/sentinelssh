@@ -87,14 +87,14 @@ export default function HomePage() {
               <strong>{totalSuspects}</strong>
               <span>IP suspectes</span>
             </li>
-            {/* En rouge seulement s'il y a au moins une alerte critique. */}
+            {/* Trait rouge en haut seulement s'il y a au moins une alerte critique. */}
             <li className={totalCritical > 0 ? 'overview-critique' : ''}>
               <strong>{totalCritical}</strong>
               <span>alertes critiques</span>
             </li>
           </ul>
           <p className="muted overview-note">
-            Les analyses sont supprimées automatiquement après 30 jours.
+            Les analyses de plus de 30 jours sont supprimées à chaque démarrage de l'application.
           </p>
         </section>
       )}

@@ -19,7 +19,7 @@ const LOG_LINES = [
 const STEPS = [
   {
     title: 'Envoyer le journal',
-    text: 'L\'administrateur envoie le fichier auth.log du serveur (.log ou .txt, 5 Mo maximum).',
+    text: 'L\'administrateur envoie le fichier auth.log du serveur (.log ou .txt, 50 Mo maximum).',
   },
   {
     title: 'Analyser',
@@ -39,7 +39,7 @@ const PROMISES = [
   },
   {
     title: 'Le fichier n\'est jamais enregistré',
-    text: 'Il est analysé en mémoire puis oublié. Seules les IP suspectes sont gardées, 30 jours au plus.',
+    text: 'Il est analysé en mémoire, sans fichier temporaire, puis oublié. Seules les IP suspectes sont gardées, puis supprimées après 30 jours (au démarrage de l\'application).',
   },
   {
     title: 'L\'humain décide',

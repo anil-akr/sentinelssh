@@ -4,8 +4,10 @@ import io
 from pathlib import Path
 
 import pytest
+from werkzeug import formparser
 
 from app import app as flask_app, block_command
+from sentinel import config
 from tests.conftest import ADMIN_PASSWORD
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -96,11 +98,24 @@ def test_upload_bad_extension_returns_400(logged_client):
 
 
 def test_upload_too_large_returns_413(logged_client):
-    big = b"x" * (5 * 1024 * 1024 + 1)
+    big = b"x" * (config.MAX_UPLOAD_BYTES + 1)
     response = upload(logged_client, big, "big.log")
     assert response.status_code == 413
     assert response.get_json() == {
-        "error": "Fichier trop volumineux (5 Mo maximum)"}
+        "error": "Fichier trop volumineux (50 Mo maximum)"}
+
+
+def test_upload_is_never_written_to_disk(logged_client, monkeypatch):
+    # Sans réglage, Werkzeug range un fichier de plus de 500 Ko dans un
+    # fichier temporaire sur le disque (SpooledTemporaryFile). On remplace
+    # cet outil par une fonction qui fait échouer le test si elle est appelée.
+    def no_disk(*args, **kwargs):
+        raise AssertionError("fichier temporaire créé sur le disque")
+
+    monkeypatch.setattr(formparser, "SpooledTemporaryFile", no_disk)
+    big_log = DEMO_LOG * (1024 * 1024 // len(DEMO_LOG) + 1)  # plus de 1 Mo
+    response = upload(logged_client, big_log, "gros.log")
+    assert response.status_code == 201
 
 
 def test_upload_empty_file_gives_empty_analysis(logged_client):
@@ -140,6 +155,16 @@ def test_get_analysis_detail(logged_client):
 
 def test_get_unknown_analysis_returns_404(logged_client):
     response = logged_client.get("/api/analyses/999")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Analyse introuvable"}
+
+
+@pytest.mark.parametrize("method", ["get", "delete"])
+def test_huge_id_returns_404(logged_client, method):
+    # Trop grand pour un entier SQLite (2**63 - 1 au maximum) : sans
+    # vérification, SQLite lève OverflowError et l'API répond 500.
+    response = getattr(logged_client, method)(
+        "/api/analyses/99999999999999999999")
     assert response.status_code == 404
     assert response.get_json() == {"error": "Analyse introuvable"}
 

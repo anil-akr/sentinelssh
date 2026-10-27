@@ -7,10 +7,12 @@ Production    : gunicorn -b 127.0.0.1:8000 app:app
 import ipaddress
 import os
 from functools import wraps
+from io import BytesIO
 from pathlib import Path
 
 import click
-from flask import Flask, abort, jsonify, request, send_from_directory, session
+from flask import (Flask, Request, abort, jsonify, request,
+                   send_from_directory, session)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from sentinel import config
@@ -26,11 +28,26 @@ if not config.SECRET_KEY:
     raise RuntimeError("SECRET_KEY manquante : copier .env.example en .env "
                        "puis y mettre une clé (voir le README).")
 
+
+class MemoryRequest(Request):
+    """Requête qui garde les fichiers envoyés en mémoire (RGPD, D17)."""
+
+    def _get_file_stream(self, total_content_length, content_type,
+                         filename=None, content_length=None):
+        """Renvoie un BytesIO : jamais de fichier temporaire sur le disque.
+
+        Par défaut, Werkzeug range un fichier de plus de 500 Ko dans un
+        fichier temporaire. La taille reste bornée par MAX_CONTENT_LENGTH.
+        """
+        return BytesIO()
+
+
 # static_folder=None : c'est la route frontend() qui sert le front.
 app = Flask(__name__, static_folder=None)
+app.request_class = MemoryRequest
 app.config.update(
     SECRET_KEY=config.SECRET_KEY,
-    # Au-delà de 5 Mo, Flask refuse la requête avec une erreur 413.
+    # Au-delà de 50 Mo, Flask refuse la requête avec une erreur 413.
     MAX_CONTENT_LENGTH=config.MAX_UPLOAD_BYTES,
     # Cookie de session illisible par JavaScript, et non envoyé par les
     # formulaires d'autres sites (protection CSRF).
@@ -219,8 +236,9 @@ def method_not_allowed(_):
 
 @app.errorhandler(413)
 def too_large(_):
-    """Fichier de plus de 5 Mo (Flask renverrait sinon une page HTML)."""
-    return error("Fichier trop volumineux (5 Mo maximum)", 413)
+    """Fichier trop gros (Flask renverrait sinon une page HTML)."""
+    return error("Fichier trop volumineux ("
+                 + str(config.MAX_UPLOAD_MB) + " Mo maximum)", 413)
 
 
 @app.errorhandler(500)

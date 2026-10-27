@@ -41,8 +41,9 @@ export default function PrivacyPage() {
       <section className="card">
         <h2>Durée de conservation</h2>
         <p>
-          Les analyses sont supprimées automatiquement au bout de 30 jours.
-          L'administrateur peut aussi supprimer une analyse à tout moment.
+          Les analyses de plus de 30 jours sont supprimées automatiquement à
+          chaque démarrage de l'application. L'administrateur peut aussi
+          supprimer une analyse à tout moment.
         </p>
       </section>
 
