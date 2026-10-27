@@ -27,7 +27,7 @@ application web protégée par une connexion.
 ## Fonctionnalités
 
 - **Connexion** par un compte administrateur unique (mot de passe haché, session par cookie).
-- **Analyse d'un fichier** `auth.log` (.log ou .txt, 5 Mo maximum) : lecture des tentatives de connexion SSH.
+- **Analyse d'un fichier** `auth.log` (.log ou .txt, 50 Mo maximum) : lecture des tentatives de connexion SSH.
 - **Détection en 3 règles**, une gravité par règle :
 
   | Règle | Condition | Gravité |
@@ -40,15 +40,15 @@ application web protégée par une connexion.
   graphique du top 10, légende des gravités et tableau trié par gravité avec une **fiche détaillée par IP**
   (localisation, opérateur du réseau, durée et rythme de l'attaque, règles expliquées).
 - **Géolocalisation hors ligne** avec la base DB-IP Lite : aucune IP n'est envoyée à un service extérieur.
-- **Commande de blocage** (`iptables`) prête à copier : l'outil propose, l'administrateur décide.
-- **Historique** des analyses, suppression, liste des **IP récidivistes** (vues dans plusieurs analyses).
-- **Page Confidentialité**, interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
+- **Commande de blocage** (`iptables`) prête à copier, avec une aide (où la taper, `sudo`, vérifier, annuler) : l'outil propose, l'administrateur décide.
+- **Accueil** : vue d'ensemble chiffrée, **historique** des analyses, suppression, liste des **IP récidivistes** (vues dans plusieurs analyses).
+- **Page de présentation** publique (le projet en une page, puis la connexion), **page Confidentialité**, interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
 
 ## Architecture
 
 ![Architecture de SentinelSSH](docs/images/architecture.png)
 
-- **Front-end** : React (Vite), 4 pages, toutes les requêtes dans `src/api.js`.
+- **Front-end** : React (Vite), 5 pages (présentation, connexion et confidentialité publiques ; accueil et détail d'une analyse protégés), toutes les requêtes dans `src/api.js`.
 - **API** : Flask, 8 routes JSON, session obligatoire sauf pour la connexion.
 - **Cœur d'analyse** : `LogParser` (lecture) et `Detector` (règles), en Python pur, sans dépendance au web ni à la base.
 - **Géolocalisation** : `GeoLocator` lit les bases locales DB-IP (`backend/data/*.mmdb`) ; la position est calculée à
@@ -140,17 +140,17 @@ Entrées et sorties détaillées : documentation technique, §5.
 ```bash
 cd backend
 pytest --cov=sentinel          # tests unitaires et d'intégration + couverture
-pycodestyle sentinel app.py cli.py
+pycodestyle sentinel app.py cli.py tests
 cd ../frontend && npm run lint
 ```
 
-- **Unitaires** : `LogParser`, `Detector`, `Database`.
+- **Unitaires** : `LogParser`, `Detector`, `Database`, `GeoLocator`.
 - **Intégration** : les 8 routes avec le client de test Flask et une base temporaire.
-- **Manuels** : collection Postman (`docs/testing/`) et checklist de bout en bout (13 scénarios).
+- **Manuels** : collection Postman (`docs/testing/`) et checklist de bout en bout (13 scénarios), rejouée dans un vrai navigateur.
 - **Robustesse** : dataset OpenSSH de [Loghub](https://github.com/logpai/loghub) (655 146 lignes).
 
-Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 77 tests, couverture de `sentinel` à 100 %,
-fichier de 5 Mo analysé en moins de 0,4 s.
+Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 93 tests, couverture de `sentinel` à 100 %,
+fichier de 45 Mo analysé en 1,7 s par l'API.
 
 ## Déploiement (production)
 
@@ -169,7 +169,7 @@ Nginx et HTTPS (hors périmètre du MVP).
 
 - Requêtes SQL paramétrées (injection SQL) ; affichage échappé par React, jamais `dangerouslySetInnerHTML` (XSS).
 - Mots de passe hachés (Werkzeug) ; cookie de session HttpOnly et SameSite=Lax ; même message d'erreur que le nom ou le mot de passe soit faux.
-- Fichiers limités à 5 Mo, extension vérifiée, contenu jamais écrit sur le disque.
+- Fichiers limités à 50 Mo, extension vérifiée, contenu gardé en mémoire et jamais écrit sur le disque (pas de fichier temporaire, voir D17).
 - Aucune commande système exécutée : l'application n'a pas besoin des droits root.
 - Une adresse IP est une donnée personnelle : seules les IP suspectes sont conservées, une analyse peut être
   supprimée, et la page Confidentialité informe sur les données traitées. Les analyses de plus de 30 jours sont

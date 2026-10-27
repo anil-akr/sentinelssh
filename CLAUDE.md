@@ -26,13 +26,13 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 
 - **Back-end** : Python 3 + Flask, dans `backend/`.
   - `sentinel/models.py` : dataclasses `Event` (time, kind, user, ip) et `SuspectIP` (ip, failures, severity, rules, users, first_seen, last_seen, `to_dict()`).
-  - `sentinel/parser.py` : `LogParser` (`parse_line`, `parse_text`).
+  - `sentinel/parser.py` : `LogParser` (`parse_line`, `parse_text`, `_read_time` : ancien format syslog et format ISO 8601 d'Ubuntu 23.10+, D16).
   - `sentinel/detector.py` : `Detector` (seuils à la création ; `detect`, `_is_persistent`, `_is_fast`, `_is_compromised`, `severity_of`).
-  - `sentinel/database.py` : `Database` (`connect` avec `PRAGMA foreign_keys = ON`, `init_db`, `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis`, `get_recidivists`, `get_user`, `create_user`).
-  - `sentinel/config.py` : seuils, `DB_PATH`, `MAX_UPLOAD_BYTES` (5 Mo), `ALLOWED_EXTENSIONS`, `SECRET_KEY` (lue dans `.env`), `GEO_CITY_DB` / `GEO_ASN_DB`.
+  - `sentinel/database.py` : `Database` (`connect` avec `PRAGMA foreign_keys = ON`, `init_db`, `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis`, `delete_older_than` (purge des 30 jours), `get_recidivists`, `get_user`, `create_user` ; un id plus grand que `SQLITE_MAX_INT` = analyse introuvable).
+  - `sentinel/config.py` : seuils, `DB_PATH`, `MAX_UPLOAD_MB` / `MAX_UPLOAD_BYTES` (50 Mo, D17), `ALLOWED_EXTENSIONS`, `SECRET_KEY` (lue dans `.env`), `GEO_CITY_DB` / `GEO_ASN_DB`.
   - `sentinel/geo.py` : `GeoLocator` (`locate`) lit les bases DB-IP Lite de `backend/data/` (téléchargées par `scripts/download_geodb.sh`, jamais commitées) ; position calculée à la lecture, jamais stockée (D14).
   - `schema.sql` (dans `backend/`) : création des 3 tables.
-  - `app.py` : 8 routes, `login_required`, `block_command(ip)`, erreurs JSON 400/401/404/413, commande `flask create-admin`, sert `frontend/dist` en production.
+  - `app.py` : `MemoryRequest` (fichier envoyé gardé en mémoire, jamais de fichier temporaire, D17), 8 routes, `login_required`, `block_command(ip)`, erreurs JSON 400/401/404/405/413/500, commande `flask create-admin`, sert `frontend/dist` en production.
   - `cli.py` : mode terminal, sans base.
 - **Base** : SQLite, 3 tables : `analyses`, `suspect_ips` (FK `analysis_id` ON DELETE CASCADE), `users` (username UNIQUE, password_hash).
 - **API** (JSON, erreurs `{"error": "..."}`) : `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/analyses` (multipart, champ `file`), `GET /api/analyses`, `GET /api/analyses/<id>`, `DELETE /api/analyses/<id>`, `GET /api/recidivists`. Session obligatoire (401) sauf login et logout.
@@ -43,7 +43,7 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 
 - Gravité : exactement `"moyenne"`, `"elevee"` (sans accent), `"critique"` — ce sont les valeurs du `CHECK` de la table `suspect_ips`.
 - `create-admin` refuse un mot de passe de moins de 12 caractères.
-- Tests : `test_parser.py`, `test_detector.py`, `test_database.py`, `test_api.py` ; mini-journaux dans `backend/tests/samples/`.
+- Tests : `test_parser.py`, `test_detector.py`, `test_database.py`, `test_api.py`, `test_geo.py` ; mini-journaux dans `backend/tests/samples/`.
 - Checklist de bout en bout : celle du Stage 3 (§6.2, 13 scénarios).
 - CI : `.github/workflows/tests.yml`.
 - Durée de conservation : 30 jours, appliquée par une requête `DELETE` au démarrage (décision D11, codée au sprint 2).
@@ -71,8 +71,9 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 - Replanification du 12/10 (D12) : sprints décalés d'une semaine. Sprint 1 : 12 → 18 oct. ; Sprint 2 : 19 → 25 oct. ; Sprint 3 : 26 oct. → 1er nov. ; Sprint 4 : 2 → 8 nov. ; marge : 9 → 12 nov. ; **demo day le 13 novembre**. Date de la revue avec le SWE à confirmer.
 - 25/10 : changement de méthode, Claude produit le code (MR dans moins de 2 semaines) ; Anil commite et pousse lui-même.
 - Bloc 1 (moteur d'analyse, PR #19) et bloc 2 (base, API, connexion, CI, PR #20) fusionnés dans `develop` (`ed46c31`).
-- Bloc 3 (front React, thème sombre, géolocalisation DB-IP + carte (D14), collection Postman, test Loghub, branche `feature/frontend`) : écrit et testé, voir `docs/testing/test-report.md`.
-- Reste : fusion dans `main`, tag v1.0.0, lancement en production, README final.
+- Bloc 3 (front React, thème sombre, géolocalisation DB-IP + carte (D14), page de présentation (D15), collection Postman, test Loghub, branche `feature/frontend`) : écrit et testé, voir `docs/testing/test-report.md`.
+- 27/10 : nouveau format de date (D16), accueil enrichi, aide de la commande de blocage, couleurs vives, limite d'envoi à 50 Mo et fichier gardé en mémoire (D17), carte accélérée, vérification générale (rapport de tests §8).
+- Reste : PR `feature/frontend` → `develop`, fusion dans `main`, tag v1.0.0, lancement en production, README final ; revues et rétrospectives des sprints (`docs/sprints/`, encore vides).
 - **À mettre à jour à chaque début de sprint.**
 
 ## Documents de référence
