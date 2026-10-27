@@ -13,8 +13,24 @@ class LogParser:
         r"Accepted (?:password|publickey) for (\S+) from (\S+)")
 
     def __init__(self, year=2000):
-        """Garde l'année ajoutée aux dates du journal, qui n'en ont pas."""
+        """Garde l'année ajoutée aux dates de l'ancien format, sans année."""
         self.year = year
+
+    def _read_time(self, line):
+        """Renvoie la date du début de la ligne (lève ValueError si illisible).
+
+        Deux formats existent :
+        - nouveau (Ubuntu 23.10 et plus) : 2026-10-25T17:17:03.249675+01:00
+        - ancien (syslog classique) : Oct 25 17:17:03, sans année
+        """
+        if line[:4].isdigit():
+            # Les 19 premiers caractères : 2026-10-25T17:17:03.
+            # Microsecondes et fuseau sont retirés : les règles comptent en
+            # secondes, et une date avec fuseau ne peut pas être comparée
+            # à une date sans fuseau (TypeError).
+            return datetime.strptime(line[:19], "%Y-%m-%dT%H:%M:%S")
+        stamp = str(self.year) + " " + line[:15]
+        return datetime.strptime(stamp, "%Y %b %d %H:%M:%S")
 
     def parse_line(self, line):
         """Renvoie l'Event lu dans la ligne, ou None si elle ne compte pas."""
@@ -27,9 +43,8 @@ class LogParser:
             if match is None:
                 return None
             kind = "success"
-        stamp = str(self.year) + " " + line[:15]
         try:
-            time = datetime.strptime(stamp, "%Y %b %d %H:%M:%S")
+            time = self._read_time(line)
         except ValueError:
             # Date illisible (ligne coupée, autre format) : ligne ignorée
             # plutôt que de faire planter toute l'analyse.

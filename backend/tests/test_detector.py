@@ -50,6 +50,14 @@ def test_four_failures_is_not_fast():
     assert Detector().detect(fails(4, 1)) == []
 
 
+def test_iso_sample_across_new_year_is_fast():
+    # Grâce à la vraie année, le 1er janvier 2027 vient bien après le
+    # 31 décembre 2026 : les 5 échecs tiennent en 40 s.
+    suspects = detect_sample("iso.log")
+    assert suspects[0].ip == "203.0.113.30"
+    assert suspects[0].rules == ["R2"]
+
+
 # --- R1 : attaque persistante ------------------------------------------
 
 def test_twenty_spread_failures_is_persistent():

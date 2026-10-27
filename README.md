@@ -186,7 +186,7 @@ Nginx et HTTPS (hors périmètre du MVP).
 
 ## Limites et évolutions
 
-- Un seul format de journal (Ubuntu classique) ; pas de lecture de journald.
+- Deux formats de date lus : syslog classique (`Oct 12 14:03:21`) et ISO 8601 d'Ubuntu 23.10 et plus (`2026-10-25T17:17:03.249675+01:00`) ; pas de lecture de journald.
 - Analyse à la demande, pas en temps réel ; un seul compte administrateur.
 - Géolocalisation approximative (base gratuite) : souvent la ville de l'opérateur, pas l'adresse exacte de l'attaquant.
 - Pistes : plusieurs comptes et rôles, audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.

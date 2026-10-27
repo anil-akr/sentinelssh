@@ -8,9 +8,9 @@ Commandes : `pytest --cov=sentinel` (dans `backend/`), `pycodestyle sentinel app
 
 | Suite | Nombre de tests | Résultat | Lien |
 |---|---|---|---|
-| Unitaires (LogParser 13, Detector 22, Database 13, GeoLocator 8) | 56 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py` |
+| Unitaires (LogParser 17, Detector 23, Database 13, GeoLocator 8) | 61 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py` |
 | Intégration (8 routes de l'API) | 29 | ✅ | `backend/tests/test_api.py` |
-| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 225 instructions, 0 manquée (85 tests au total) |
+| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 229 instructions, 0 manquée (90 tests au total) |
 | pycodestyle / ESLint | — | ✅ 0 erreur | |
 
 Les mêmes vérifications tournent dans la CI (`.github/workflows/tests.yml`) : un job `backend` et un job `frontend` (lint + construction).
@@ -116,4 +116,5 @@ Faite après la carte interactive (zoom, déplacement, infobulle des IP), la dur
 | Navigateur : checklist + carte, fiche IP, légende, durée (21 scénarios) | ✅ 21/21, aucune erreur JavaScript |
 | Navigateur : zoom (boutons, molette, double-clic), déplacement, infobulle zoomée, recentrage (10 scénarios) | ✅ 10/10 ; la page ne défile pas pendant le zoom à la molette |
 | Débordement horizontal à 320, 375 et 390 px (connexion, confidentialité, accueil, 4 analyses dont vide et XSS) | ✅ 21/21 pages, 0 px |
-| Page de présentation (D15) : redirection d'un visiteur non connecté, liens vers la connexion et retour, ancre « Comment ça marche », 3 étapes et 3 gravités, logo du bandeau et de la connexion vers la présentation, bouton « Ouvrir l'application » si connecté, aucun débordement à 1366, 375 et 320 px | ✅ 17/17 ; régression rejouée (21/21, scénario 1 : redirection vers `/presentation`) |
+| Page de présentation (D15) : redirection d'un visiteur non connecté, liens vers la connexion et retour, ancre « Comment ça marche », 3 étapes et 3 gravités, logo du bandeau et de la connexion vers la présentation, bouton « Analyser un journal » si connecté, aucun débordement à 1366, 375 et 320 px | ✅ 17/17 ; régression rejouée (21/21, scénario 1 : redirection vers `/presentation`) |
+| Nouveau format de date (D16) : 5 tests ajoutés (lignes Failed et Accepted, date abîmée, fichier mélangeant les deux formats, R2 à cheval sur le Nouvel An avec `samples/iso.log`) | ✅ 90 tests, 100 % ; pycodestyle 0 erreur ; `cli.py tests/samples/iso.log` : 1 IP, R2, élevée |
