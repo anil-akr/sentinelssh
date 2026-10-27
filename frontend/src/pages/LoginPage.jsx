@@ -24,7 +24,10 @@ export default function LoginPage() {
   return (
     <main className="login">
       <form className="card login-card" onSubmit={handleSubmit}>
-        <img src="/favicon.svg" alt="" width="40" height="40" />
+        {/* Le logo ramène à la page de présentation. */}
+        <Link to="/presentation" aria-label="Présentation de SentinelSSH">
+          <img src="/favicon.svg" alt="" width="40" height="40" />
+        </Link>
         <h1>SentinelSSH</h1>
         <p className="muted">
           Connexion administrateur pour analyser les journaux SSH du serveur.
@@ -52,7 +55,9 @@ export default function LoginPage() {
         <button type="submit">Se connecter</button>
         {error && <p className="error" role="alert">{error}</p>}
       </form>
-      <Link to="/confidentialite" className="login-link">Confidentialité</Link>
+      <p className="login-link">
+        <Link to="/presentation">Découvrir SentinelSSH</Link> · <Link to="/confidentialite">Confidentialité</Link>
+      </p>
     </main>
   )
 }

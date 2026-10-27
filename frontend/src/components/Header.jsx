@@ -16,7 +16,8 @@ export default function Header({ username }) {
 
   return (
     <header className="header">
-      <Link to="/" className="brand">
+      {/* Le logo ramène à la page de présentation. */}
+      <Link to="/presentation" className="brand">
         {/* alt="" : image décorative, le nom est écrit juste à côté. */}
         <img src="/favicon.svg" alt="" width="28" height="28" />
         <span>SentinelSSH</span>

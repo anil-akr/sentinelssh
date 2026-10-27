@@ -31,7 +31,8 @@ export default function ProtectedRoute() {
     return <p className="page">Chargement…</p>
   }
   if (status === 'denied') {
-    return <Navigate to="/login" replace />
+    // Visiteur non connecté : d'abord la présentation, qui mène à la connexion.
+    return <Navigate to="/presentation" replace />
   }
   if (status === 'error') {
     return <p className="page error" role="alert">{error}</p>

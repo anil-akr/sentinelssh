@@ -356,6 +356,178 @@ button:disabled {
   color: var(--muted);
 }
 
+/* --- Page de présentation ----------------------------------------------- */
+
+/* Lien avec l'apparence d'un bouton (mêmes couleurs que button). */
+.button-link {
+  display: inline-block;
+  font-weight: 600;
+  padding: 0.65rem 1.3rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+.button-link:hover {
+  background: #8fcaf5;
+  border-color: #8fcaf5;
+  color: var(--accent-ink);
+}
+
+.button-link-secondary {
+  background: transparent;
+  color: var(--accent);
+  border-color: #345272;
+}
+
+.button-link-secondary:hover {
+  background: var(--raised);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Haut de page : texte à gauche, extrait de journal à droite. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 2.5rem;
+  align-items: center;
+  padding: 2.5rem 0 3rem;
+}
+
+.hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 1.15rem;
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 {
+  font-size: 2.6rem;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+
+.hero-lead {
+  color: var(--muted);
+  font-size: 1.05rem;
+  max-width: 34rem;
+  margin-bottom: 1.75rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Extrait de journal : le « terminal » de la page. */
+.log-sample {
+  margin: 0;
+  padding: 1.1rem;
+  background: #070d18;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 45%);
+}
+
+.log-sample figcaption {
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+/* overflow-x: auto : les longues lignes défilent dans le cadre. */
+.log-sample pre {
+  margin: 0 0 1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.log-line {
+  display: block;
+}
+
+/* La connexion réussie après les échecs : ce qui rend l'IP critique. */
+.log-accepted {
+  color: var(--critique);
+  font-weight: 500;
+}
+
+.log-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+/* Étapes numérotées : le numéro dans un cercle, le texte à côté. */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.steps li {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.step-number {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.steps h3,
+.promises h3 {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.steps p,
+.promises p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.promises {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 2rem;
+}
+
+.landing-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  padding: 1rem 0 2rem;
+}
+
+.landing-footer p {
+  margin: 0 0 0.4rem;
+}
+
 /* --- Tableaux ---------------------------------------------------------- */
 
 /* Sur petit écran, le tableau défile dans son cadre : la page, elle,
@@ -1092,6 +1264,22 @@ tbody tr:last-child td {
   .suspects-table th,
   .suspects-table td {
     padding: 0.6rem 0.5rem;
+  }
+
+  /* Présentation : tout sur une colonne. */
+  .hero,
+  .steps,
+  .promises {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero {
+    gap: 1.75rem;
+    padding: 1rem 0 1.75rem;
+  }
+
+  .hero h1 {
+    font-size: 1.85rem;
   }
 
   /* Champ fichier puis bouton, chacun sur toute la largeur. */
