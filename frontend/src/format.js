@@ -86,3 +86,15 @@ export function totalFailures(ips) {
   }
   return total
 }
+
+// Date ISO de l'API (« 2026-10-28T14:30:00 ») → « 28/10/2026 à 14:30 ».
+export function formatDate(iso) {
+  const date = new Date(iso)
+  // Date absente ou illisible : un tiret plutôt que « Invalid Date ».
+  if (!iso || Number.isNaN(date.getTime())) {
+    return '—'
+  }
+  const day = date.toLocaleDateString('fr-FR')
+  const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return `${day} à ${time}`
+}

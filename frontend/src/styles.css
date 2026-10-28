@@ -80,8 +80,10 @@ a {
   text-underline-offset: 3px;
 }
 
+/* Survol d'un lien : plus clair et souligné plus épais (11,9:1). */
 a:hover {
-  color: #a6d6f8;
+  color: #b9e0fb;
+  text-decoration-thickness: 2px;
 }
 
 /* Contour visible au clavier (accessibilité). */
@@ -150,18 +152,46 @@ code {
   padding: 0.5rem 0 1.5rem;
 }
 
+/* Listes sans puces ni retrait (chiffres, étapes, légendes, pays…).
+   Écrite avant les règles de chaque liste : une liste qui veut une autre
+   marge la redonne plus bas (même poids CSS : le dernier gagne). */
+.overview,
+.steps,
+.promises,
+.legend,
+.verdict-counts,
+.map-tooltip ul,
+.map-legend,
+.country-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* --- Bandeau ----------------------------------------------------------- */
 
+/* Navigation à gauche, session à droite. Le bandeau reste en haut de
+   l'écran pendant le défilement (longues analyses). */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;  /* au-dessus de la carte et des tableaux */
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.8rem max(1rem, calc((100% - 1168px) / 2));
-  background: rgb(8 14 26 / 70%);
+  align-items: stretch;
+  column-gap: 1.5rem;
+  padding: 0 max(1rem, calc((100% - 1168px) / 2));
+  background: rgb(8 14 26 / 85%);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
+}
+
+.header-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 2rem;
+  min-height: 3.5rem;
 }
 
 .brand {
@@ -178,14 +208,122 @@ code {
   color: var(--text);
 }
 
-.header-user {
+.header-links {
   display: flex;
-  align-items: center;
-  gap: 0.9rem;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.header-username {
+.header-links li {
+  display: flex;
+}
+
+/* Un lien = un onglet : toute la hauteur du bandeau, et une barre de 2 px
+   posée sur la bordure du bas (margin-bottom: -1px) sous la page ouverte. */
+.header-link {
+  display: flex;
+  align-items: center;
+  padding-top: 2px;  /* équilibre la barre du bas */
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
   color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.header-link:hover {
+  color: var(--text);
+  border-bottom-color: #345272;
+}
+
+.header-link.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.header-session {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;  /* permet au nom très long d'être coupé (…) */
+}
+
+/* Le compte, écrit comme l'invite d'un terminal : chef@sentinelssh:~#
+   (bandeau, présentation, page Comptes). */
+.account-prompt {
+  overflow: hidden;
+  max-width: 24rem;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.prompt-host {
+  color: var(--muted);
+}
+
+/* L'invite cliquable (vers Mon compte) a l'air d'un bouton : cadre au
+   repos, fond bleu au survol comme les boutons secondaires, cadre bleu
+   quand la page Mon compte est ouverte. */
+.account-prompt-link {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #345272;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.account-prompt-link:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Au survol, la partie grise passe aussi en foncé (lisible sur le bleu). */
+.account-prompt-link:hover .prompt-host {
+  color: var(--accent-ink);
+}
+
+.account-prompt-link.active {
+  border-color: var(--accent);
+}
+
+.header-session .button-secondary {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+/* Téléphone : 1re ligne logo + liens, 2e ligne la session. Le bandeau
+   n'est plus collé en haut : sur 2 lignes, il cacherait trop d'écran. */
+@media (max-width: 640px) {
+  .header {
+    position: static;
+  }
+
+  .header-nav {
+    gap: 1.25rem;
+  }
+
+  /* Le nom est caché à l'écran mais reste lu (nom du lien du logo). */
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .header-session {
+    flex: 1 0 100%;
+    justify-content: space-between;
+    padding: 0.5rem 0 0.6rem;
+    border-top: 1px solid var(--line);
+  }
 }
 
 /* --- Formulaires et boutons -------------------------------------------- */
@@ -214,20 +352,189 @@ input:not([type="file"]):focus {
   border-color: var(--accent);
 }
 
+/* Bouton « Supprimer mon compte » : bordure rouge, sous le champ. */
+.delete-account-button {
+  margin-top: 0.9rem;
+  border-color: var(--danger);
+}
+
+/* --- Comptes et profil ---------------------------------------------------- */
+
+/* Profil : une colonne de lecture confortable, pas toute la largeur. */
+.profile {
+  max-width: 880px;
+}
+
+/* En-tête : l'invite du compte en grand, comme dans le bandeau. */
+.profile-head {
+  margin: 0.5rem 0 1.75rem;
+}
+
+.profile-prompt {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: clamp(1.4rem, 4.5vw, 2.25rem);
+  font-weight: 500;
+  overflow-wrap: anywhere;  /* un nom de 30 caractères passe à la ligne */
+}
+
+.prompt-sign {
+  color: var(--accent);
+}
+
+/* Rôle et dates : des paires libellé / valeur sur une ligne. */
+.profile-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2.5rem;
+  margin: 0.9rem 0 0;
+}
+
+.profile-facts dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.profile-facts dd {
+  margin: 0;
+}
+
+/* Ligne de réglage : libellé | valeur | bouton. Le formulaire ouvert
+   occupe toute la largeur, sous la ligne. */
+.setting-row {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.setting-label {
+  color: var(--muted);
+}
+
+.setting-value {
+  overflow-wrap: anywhere;
+}
+
+.setting-panel {
+  grid-column: 1 / -1;
+  max-width: 26rem;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.account-form label:first-child {
+  margin-top: 0;
+}
+
+.account-form button {
+  margin-top: 1rem;
+}
+
+.account-form .error,
+.account-form .success {
+  margin: 0.75rem 0 0;
+}
+
+/* Suppression : champ et bouton côte à côte. */
+.danger-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.danger-inline input {
+  flex: 1 1 14rem;
+  max-width: 20rem;
+}
+
+.danger-inline .delete-account-button {
+  margin-top: 0;
+}
+
+/* Téléphone : le libellé au-dessus, la valeur et le bouton dessous. */
+@media (max-width: 640px) {
+  .setting-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .setting-label {
+    grid-column: 1 / -1;
+    font-size: 0.875rem;
+  }
+}
+
+/* Confirmation d'une modification réussie (8,5:1 sur le panneau). */
+.success {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* Bloc de suppression du compte : bord rouge, l'action est définitive. */
+.card-danger {
+  border-color: rgb(255 107 120 / 45%);
+}
+
+/* Page Comptes : son propre compte, séparé de la liste. */
+.own-account {
+  border-left: 3px solid var(--accent);
+}
+
+.own-account-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Aide sous un champ (règles du nom et du mot de passe). */
+.field-help {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+}
+
 button {
   font: inherit;
-  font-weight: 600;
   cursor: pointer;
   padding: 0.55rem 1.1rem;
+}
+
+/* Lien avec l'apparence d'un bouton (page de présentation). */
+.button-link {
+  display: inline-block;
+  padding: 0.65rem 1.3rem;
+  text-decoration: none;
+}
+
+/* Couleurs communes aux boutons et aux liens-boutons. */
+button,
+.button-link {
+  font-weight: 600;
   border: 1px solid var(--accent);
   border-radius: 8px;
   background: var(--accent);
   color: var(--accent-ink);
 }
 
-button:hover {
-  background: #8fcaf5;
-  border-color: #8fcaf5;
+/* Survol, même règle pour tous les boutons : le bouton se remplit d'une
+   couleur nettement différente et le texte devient foncé. Contrastes
+   vérifiés (WCAG AA, au moins 4,5:1) : 13,3:1, 8,8:1 et 6,8:1. */
+button,
+.button-link {
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s,
+    box-shadow 0.15s;
+}
+
+button:hover,
+.button-link:hover {
+  background: #b6defb;
+  border-color: #b6defb;
+  color: var(--accent-ink);
+  /* Halo bleu autour du bouton : le survol se voit même du coin de l'œil. */
+  box-shadow: 0 0 0 3px rgb(108 184 240 / 30%);
 }
 
 button:disabled {
@@ -235,15 +542,26 @@ button:disabled {
   cursor: wait;
 }
 
-.button-secondary {
+/* Un bouton désactivé (envoi en cours) ne réagit pas au survol : il
+   garde ses couleurs de repos. Seul le bouton principal est désactivable. */
+button:disabled:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+.button-secondary,
+.button-link-secondary {
   background: transparent;
   color: var(--accent);
   border-color: #345272;
 }
 
-.button-secondary:hover {
-  background: var(--raised);
+.button-secondary:hover,
+.button-link-secondary:hover {
+  background: var(--accent);
   border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .button-small {
@@ -258,8 +576,10 @@ button:disabled {
 }
 
 .button-danger:hover {
-  background: var(--critique-bg);
-  border-color: var(--critique-bg);
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 3px rgb(255 107 120 / 30%);
 }
 
 /* --- Envoi d'un fichier ------------------------------------------------ */
@@ -305,23 +625,173 @@ button:disabled {
 
 /* --- Accueil ----------------------------------------------------------- */
 
-/* Grand écran : historique (2/3) et récidivistes (1/3) côte à côte. */
-.home-grid {
+/* Grand écran, deux cases côte à côte (2/3 et 1/3) : historique et
+   récidivistes à l'accueil, carte et pays dans le détail. Pas
+   d'align-items : la grille étire les 2 cases à la hauteur de la plus
+   haute ; la case des pays (.card-fill) suit la carte, sa liste défile. */
+.home-grid,
+.map-grid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 1.25rem;
-  align-items: start;
+  margin-bottom: 1.25rem;
 }
 
-.home-grid .card {
+.home-grid .card,
+.map-grid .card {
   margin-bottom: 0;
 }
 
-/* Colonne de droite de l'accueil : récidivistes puis gravités. */
-.home-side {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);  /* un tableau large ne l'élargit pas */
-  gap: 1.25rem;
+/* --- Listes longues : une barre de défilement plutôt qu'une page sans fin --- */
+
+/* Tableau qui défile au-delà de 70 % de la hauteur de l'écran. */
+.scroll-list .table-wrapper {
+  max-height: 70vh;
+}
+
+/* Case qui prend la hauteur de sa voisine : ses enfants s'empilent en
+   colonne, et la zone .fill occupe toute la place qui reste. */
+.card-fill {
+  display: flex;
+  flex-direction: column;
+}
+
+/* L'astuce : le contenu est en position absolue, donc il ne compte pas
+   dans la hauteur de la case. C'est la case voisine qui fixe la hauteur
+   de la ligne ; la liste remplit la place et défile si elle est plus longue. */
+.fill {
+  position: relative;
+  flex: 1;
+  min-height: 12rem;  /* toujours quelques lignes visibles */
+}
+
+/* 2 classes dans le sélecteur : plus fort que « .table-wrapper » (1 classe,
+   écrite plus bas, qui met position: relative). Avec .fill > * seul, la
+   règle du tableau gagnait et la case des récidivistes s'étirait. */
+.card-fill .fill > * {
+  position: absolute;
+  inset: 0;  /* top, right, bottom et left à 0 : remplit .fill */
+}
+
+/* Zones qui défilent : verticalement seulement.
+   - overflow-x: hidden : jamais de barre horizontale ;
+   - scrollbar-gutter: stable : la place de la barre est réservée, le texte
+     ne saute pas quand elle apparaît ;
+   - padding-right : une marge entre le texte et la barre ;
+   - barre fine aux couleurs du thème (la barre claire par défaut de
+     Windows tranche sur le fond sombre). */
+.scroll-list .table-wrapper,
+.card-fill .fill > * {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;  /* curseur, puis rail */
+}
+
+/* Dans ces zones, les cases sont un peu moins larges, et les titres de
+   colonnes peuvent passer à la ligne (« Échecs au total ») au lieu
+   d'élargir le tableau. Dates, nombres et boutons restent sur une ligne. */
+.scroll-list th,
+.scroll-list td,
+.fill th,
+.fill td {
+  padding: 0.6rem 0.5rem;
+}
+
+/* Titres : passent à la ligne, et restent collés en haut pendant le
+   défilement. Fond opaque (var(--raised)) : les lignes passent dessous
+   sans se voir à travers. */
+.scroll-list th,
+.fill th {
+  white-space: normal;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Nom de fichier et adresse IP : peuvent être coupés n'importe où, mais
+   seulement s'ils ne tiennent pas (une adresse IPv6 fait 39 caractères). */
+.scroll-list .file-name,
+.scroll-list td.mono,
+.fill td.mono {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Tablette : le tableau des IP cache Origine, Règles et Comptes visés
+   (colonnes 5 à 7), visibles dans la fiche dépliée ; la colonne des
+   récidivistes s'élargit un peu. La ligne de la fiche n'a qu'une
+   cellule : elle n'est pas touchée. */
+@media (max-width: 1100px) {
+  .suspects-table th:nth-child(n + 5):nth-child(-n + 7),
+  .suspects-table td:nth-child(n + 5):nth-child(-n + 7) {
+    display: none;
+  }
+
+  .home-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+  }
+}
+
+/* Tablette en hauteur : historique et récidivistes l'un sous l'autre
+   (côte à côte, les tableaux seraient trop serrés). */
+@media (max-width: 900px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Plus de voisine pour fixer la hauteur : une hauteur raisonnable. */
+  .fill {
+    min-height: 22rem;
+  }
+}
+
+/* Téléphone : même en cachant des colonnes, une IP, une pastille et un
+   bouton ne tiennent pas côte à côte. Chaque ligne devient une petite
+   fiche : le nom de la colonne (data-label) à gauche, la valeur à droite. */
+@media (max-width: 640px) {
+  .scroll-list table,
+  .scroll-list tbody,
+  .fill table,
+  .fill tbody {
+    display: block;
+  }
+
+  /* Les titres sont repris dans chaque ligne : la ligne d'en-tête est cachée. */
+  .scroll-list thead,
+  .fill thead {
+    display: none;
+  }
+
+  .scroll-list tr,
+  .fill tr {
+    display: block;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* [data-label] : seulement les cases de données, pas la ligne de la
+     fiche dépliée (une seule case sans data-label). */
+  .scroll-list td[data-label],
+  .fill td[data-label] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    border: 0;
+    text-align: right;
+  }
+
+  /* attr(data-label) : le texte de l'attribut, affiché par le CSS. */
+  .scroll-list td[data-label]::before,
+  .fill td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    text-align: left;
+  }
 }
 
 /* Aides repliées : sous la zone d'envoi et sous la commande de blocage. */
@@ -332,10 +802,22 @@ button:disabled {
 }
 
 .upload-help summary,
-.command-help summary {
+.command-help summary,
+.legend-item summary,
+.term-help summary {
   cursor: pointer;
   color: var(--accent);
   font-weight: 600;
+}
+
+/* Titres de l'aide (un par système), plus petits que ceux des cartes. */
+.upload-help h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+.upload-help p {
+  margin: 0.4rem 0 0;
 }
 
 .upload-help pre,
@@ -354,9 +836,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .overview li {
@@ -434,36 +913,6 @@ button:disabled {
 }
 
 /* --- Page de présentation ----------------------------------------------- */
-
-/* Lien avec l'apparence d'un bouton (mêmes couleurs que button). */
-.button-link {
-  display: inline-block;
-  font-weight: 600;
-  padding: 0.65rem 1.3rem;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  text-decoration: none;
-}
-
-.button-link:hover {
-  background: #8fcaf5;
-  border-color: #8fcaf5;
-  color: var(--accent-ink);
-}
-
-.button-link-secondary {
-  background: transparent;
-  color: var(--accent);
-  border-color: #345272;
-}
-
-.button-link-secondary:hover {
-  background: var(--raised);
-  border-color: var(--accent);
-  color: var(--accent);
-}
 
 /* Haut de page : texte à gauche, extrait de journal à droite. */
 .hero {
@@ -549,9 +998,6 @@ button:disabled {
 
 /* Étapes numérotées : le numéro dans un cercle, le texte à côté. */
 .steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
@@ -587,12 +1033,42 @@ button:disabled {
 }
 
 .promises {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem 2rem;
+}
+
+/* Présentation, connecté : le compte et Déconnexion dans une pastille
+   collée en haut à droite pendant le défilement (sticky). Fond sombre
+   flouté : elle reste lisible par-dessus le texte qui passe dessous. */
+.landing-top {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;  /* permet au nom très long d'être coupé (…) */
+  margin-left: auto;  /* poussée à droite */
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(8 14 26 / 85%);
+  backdrop-filter: blur(10px);
+}
+
+.landing-top .button-secondary {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.9rem;
+  border-radius: 999px;
+}
+
+/* Dans la pastille, l'invite est ronde comme Déconnexion ; dans le
+   bandeau des autres pages, les deux restent rectangulaires (8px). */
+.landing-top .account-prompt-link {
+  border-radius: 999px;
 }
 
 .landing-footer {
@@ -637,8 +1113,10 @@ th {
   background: var(--raised);
 }
 
+/* Ligne survolée : fond bleu bien visible, texte toujours lisible
+   (10,2:1). */
 tbody tr:hover {
-  background: #172438;
+  background: #22375a;
 }
 
 tbody tr:last-child td {
@@ -667,16 +1145,10 @@ tbody tr:last-child td {
 }
 
 /* Bord gauche de la ligne à la couleur de la gravité. */
-.row-moyenne td:first-child {
-  box-shadow: inset 4px 0 0 var(--moyenne);
-}
-
-.row-elevee td:first-child {
-  box-shadow: inset 4px 0 0 var(--elevee);
-}
-
+.row-moyenne td:first-child,
+.row-elevee td:first-child,
 .row-critique td:first-child {
-  box-shadow: inset 4px 0 0 var(--critique);
+  box-shadow: inset 4px 0 0 var(--sev);
 }
 
 .row-open {
@@ -727,6 +1199,22 @@ tbody tr:last-child td {
   margin: 0.6rem 0 0;
 }
 
+/* Petites aides repliées de la fiche d'une IP : coordonnées, numéro d'AS. */
+.term-help {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.term-help summary {
+  font-weight: 500;
+}
+
+.term-help p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  max-width: 34rem;
+}
+
 .command-help ul {
   margin: 0.3rem 0 0;
   padding-left: 1.1rem;
@@ -753,31 +1241,55 @@ tbody tr:last-child td {
 
 /* --- Gravité ----------------------------------------------------------- */
 
+/* Chaque classe de gravité range sa couleur dans deux variables : --sev
+   (vive) et --sev-bg (fond sombre). Les règles plus bas (pastille, légende,
+   ligne, verdict, carte) n'ont plus qu'à écrire var(--sev). Une variable
+   se transmet aux éléments enfants, comme une couleur de texte. */
+.badge-moyenne,
+.legend-moyenne,
+.row-moyenne,
+.verdict-moyenne,
+.swatch-moyenne,
+.map-dot-moyenne {
+  --sev: var(--moyenne);
+  --sev-bg: var(--moyenne-bg);
+}
+
+.badge-elevee,
+.legend-elevee,
+.row-elevee,
+.verdict-elevee,
+.swatch-elevee,
+.map-dot-elevee {
+  --sev: var(--elevee);
+  --sev-bg: var(--elevee-bg);
+}
+
+.badge-critique,
+.legend-critique,
+.row-critique,
+.verdict-critique,
+.swatch-critique,
+.map-dot-critique {
+  --sev: var(--critique);
+  --sev-bg: var(--critique-bg);
+}
+
+/* Aucune IP suspecte : le verdict est vert. */
+.verdict-aucune {
+  --sev: var(--ok);
+  --sev-bg: var(--ok-bg);
+}
+
 .badge {
   display: inline-block;
   padding: 0.1rem 0.65rem;
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;
-  border: 1px solid;
-}
-
-.badge-moyenne {
-  background: var(--moyenne-bg);
-  border-color: var(--moyenne);
-  color: var(--moyenne);
-}
-
-.badge-elevee {
-  background: var(--elevee-bg);
-  border-color: var(--elevee);
-  color: var(--elevee);
-}
-
-.badge-critique {
-  background: var(--critique-bg);
-  border-color: var(--critique);
-  color: var(--critique);
+  border: 1px solid var(--sev);
+  background: var(--sev-bg);
+  color: var(--sev);
 }
 
 /* Légende des 3 niveaux. */
@@ -785,9 +1297,6 @@ tbody tr:last-child td {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .legend-item {
@@ -795,15 +1304,12 @@ tbody tr:last-child td {
   border-radius: 10px;
   background: #0f192a;
   border-top: 3px solid;
+  border-color: var(--sev);
 }
 
 .legend-item p {
   margin: 0.6rem 0 0;
   font-size: 0.925rem;
-}
-
-.legend-moyenne {
-  border-color: var(--moyenne);
 }
 
 /* « Pourquoi ce seuil ? » : <details> s'ouvre au clic, sans JavaScript. */
@@ -812,33 +1318,8 @@ tbody tr:last-child td {
   font-size: 0.9rem;
 }
 
-.legend-item summary {
-  cursor: pointer;
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .legend-item details p {
   color: var(--text);
-}
-
-/* La note prend toute la largeur, sous les 3 niveaux. */
-.legend-note {
-  grid-column: 1 / -1;
-  font-size: 0.875rem;
-}
-
-/* Légende dans une case étroite (accueil) : une seule colonne. */
-.legend-compact {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.legend-elevee {
-  border-color: var(--elevee);
-}
-
-.legend-critique {
-  border-color: var(--critique);
 }
 
 /* --- Détail : titre, verdict, résumé ----------------------------------- */
@@ -860,13 +1341,15 @@ tbody tr:last-child td {
   margin: 1rem 0 1.25rem;
   padding: 1.35rem 1.5rem;
   border-radius: var(--radius);
-  border: 1px solid;
+  border: 1px solid var(--sev);
   border-left-width: 8px;
+  background: linear-gradient(90deg, var(--sev-bg), var(--surface));
 }
 
 .verdict h2 {
   font-size: 1.6rem;
   margin: 0 0 0.3rem;
+  color: var(--sev);
 }
 
 .verdict p {
@@ -880,50 +1363,15 @@ tbody tr:last-child td {
   color: var(--text);
 }
 
+/* Critique : en plus, un halo rouge autour du bandeau. */
 .verdict-critique {
-  background: linear-gradient(90deg, var(--critique-bg), var(--surface));
-  border-color: var(--critique);
   box-shadow: 0 0 40px rgb(255 51 68 / 18%);
-}
-
-.verdict-critique h2 {
-  color: var(--critique);
-}
-
-.verdict-elevee {
-  background: linear-gradient(90deg, var(--elevee-bg), var(--surface));
-  border-color: var(--elevee);
-}
-
-.verdict-elevee h2 {
-  color: var(--elevee);
-}
-
-.verdict-moyenne {
-  background: linear-gradient(90deg, var(--moyenne-bg), var(--surface));
-  border-color: var(--moyenne);
-}
-
-.verdict-moyenne h2 {
-  color: var(--moyenne);
-}
-
-.verdict-aucune {
-  background: linear-gradient(90deg, var(--ok-bg), var(--surface));
-  border-color: var(--ok);
-}
-
-.verdict-aucune h2 {
-  color: var(--ok);
 }
 
 /* Nombre d'IP par gravité, à droite du verdict. */
 .verdict-counts {
   display: flex;
   gap: 1.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .verdict-counts li {
@@ -975,21 +1423,6 @@ tbody tr:last-child td {
 }
 
 /* --- Carte et pays ----------------------------------------------------- */
-
-/* Carte (2/3) et classement des pays (1/3). */
-.map-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  /* start : chaque carte garde sa propre hauteur (par défaut, la grille
-     étire la carte du monde à la hauteur de la liste des pays). */
-  align-items: start;
-  gap: 1.25rem;
-  margin-bottom: 1.25rem;
-}
-
-.map-grid .card {
-  margin-bottom: 0;
-}
 
 .map {
   position: relative;  /* repère pour placer l'infobulle */
@@ -1080,8 +1513,6 @@ tbody tr:last-child td {
 
 .map-tooltip ul {
   margin: 0.4rem 0 0;
-  padding: 0;
-  list-style: none;
 }
 
 .map-tooltip li {
@@ -1132,8 +1563,6 @@ tbody tr:last-child td {
   align-items: center;
   gap: 0.5rem 1.25rem;
   margin: 0.9rem 0 0;
-  padding: 0;
-  list-style: none;
   font-size: 0.875rem;
 }
 
@@ -1147,18 +1576,7 @@ tbody tr:last-child td {
   width: 0.85rem;
   height: 0.85rem;
   border-radius: 3px;
-}
-
-.swatch-moyenne {
-  background: var(--moyenne);
-}
-
-.swatch-elevee {
-  background: var(--elevee);
-}
-
-.swatch-critique {
-  background: var(--critique);
+  background: var(--sev);
 }
 
 .map-dot circle {
@@ -1167,18 +1585,7 @@ tbody tr:last-child td {
   vector-effect: non-scaling-stroke;
   /* Un peu transparents : des points qui se chevauchent restent visibles. */
   fill-opacity: 0.75;
-}
-
-.map-dot-moyenne circle {
-  fill: var(--moyenne);
-}
-
-.map-dot-elevee circle {
-  fill: var(--elevee);
-}
-
-.map-dot-critique circle {
-  fill: var(--critique);
+  fill: var(--sev);
 }
 
 /* Onde autour des IP critiques : le seul élément animé de l'application. */
@@ -1216,12 +1623,6 @@ tbody tr:last-child td {
 
 .attribution a {
   color: var(--muted);
-}
-
-.country-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .country-list li {
@@ -1278,26 +1679,16 @@ tbody tr:last-child td {
   text-align: right;
 }
 
-/* Pas de couleur ici : la classe swatch-<gravité> la donne. */
+/* La classe swatch-<gravité> donne --sev : la couleur de la barre. */
 .country-bar {
   height: 5px;
+  background: var(--sev);
   /* Une part minuscule reste visible (un petit trait, pas rien). */
   min-width: 3px;
   border-radius: 2px;
-}
-
-/* Léger halo lumineux (effet néon) de la couleur de la gravité :
-   une ombre floue de 3 px, sans décalage. */
-.country-bar.swatch-moyenne {
-  box-shadow: 0 0 3px var(--moyenne);
-}
-
-.country-bar.swatch-elevee {
-  box-shadow: 0 0 3px var(--elevee);
-}
-
-.country-bar.swatch-critique {
-  box-shadow: 0 0 3px var(--critique);
+  /* Léger halo lumineux (effet néon) de la couleur de la gravité :
+     une ombre floue de 3 px, sans décalage. */
+  box-shadow: 0 0 3px var(--sev);
 }
 
 /* Bouton sous la liste des pays, sur toute la largeur. */
@@ -1346,8 +1737,7 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 640px) {
-  .summary,
-  .overview {
+  .summary {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -1394,20 +1784,8 @@ tbody tr:last-child td {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .header-username {
-    display: none;  /* place gagnée ; le bouton Déconnexion reste */
-  }
-
   .card {
     padding: 1rem;
-  }
-
-  /* Tableau des IP : on cache Origine, Règles et Comptes (colonnes 5 à 7),
-     qui restent visibles dans la fiche dépliée. La ligne de la fiche n'a
-     qu'une cellule : elle n'est pas touchée. */
-  .suspects-table th:nth-child(n + 5):nth-child(-n + 7),
-  .suspects-table td:nth-child(n + 5):nth-child(-n + 7) {
-    display: none;
   }
 
   .suspects-table th,

@@ -17,9 +17,10 @@ export default function RecidivistsTable({ recidivists }) {
         <tbody>
           {recidivists.map((r) => (
             <tr key={r.ip}>
-              <td className="mono">{r.ip}</td>
-              <td>{r.analyses_count}</td>
-              <td>{r.total_failures}</td>
+              {/* data-label : nom de la colonne, affiché sur téléphone. */}
+              <td className="mono" data-label="IP">{r.ip}</td>
+              <td data-label="Analyses">{r.analyses_count}</td>
+              <td data-label="Échecs au total">{r.total_failures}</td>
             </tr>
           ))}
         </tbody>

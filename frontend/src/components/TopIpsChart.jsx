@@ -20,13 +20,22 @@ export default function TopIpsChart({ suspects }) {
       className="chart"
       role="img"
       aria-label="Graphique en barres du nombre d'échecs par IP"
-      style={{ height: 40 * top10.length + 60 }}
+      style={{ height: 40 * top10.length + 84 }}
     >
       <ResponsiveContainer width="100%" height="100%">
         {/* layout="vertical" : barres horizontales, IP lisibles à gauche. */}
-        <BarChart data={top10} layout="vertical" margin={{ left: 8, right: 16 }}>
+        {/* bottom: 24 : la place du titre de l'axe sous les nombres. */}
+        <BarChart data={top10} layout="vertical" margin={{ left: 8, right: 16, bottom: 24 }}>
           <CartesianGrid stroke="#22324a" horizontal={false} />
-          <XAxis type="number" allowDecimals={false} tick={AXIS} stroke="#2c3d58" />
+          {/* tickFormatter : « 3000 » s'affiche « 3 000 » ; label : titre de l'axe. */}
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            tick={AXIS}
+            stroke="#2c3d58"
+            tickFormatter={(value) => value.toLocaleString('fr-FR')}
+            label={{ value: "Nombre d'échecs", position: 'insideBottom', offset: -16, ...AXIS }}
+          />
           <YAxis
             type="category"
             dataKey="ip"
@@ -35,7 +44,7 @@ export default function TopIpsChart({ suspects }) {
             stroke="#2c3d58"
           />
           <Tooltip
-            formatter={(value) => [value, 'Échecs']}
+            formatter={(value) => [value.toLocaleString('fr-FR'), 'Échecs']}
             cursor={{ fill: '#ffffff', fillOpacity: 0.04 }}
             contentStyle={{ background: '#16233a', border: '1px solid #2c3d58', borderRadius: 8 }}
             labelStyle={{ color: '#e8eef7' }}

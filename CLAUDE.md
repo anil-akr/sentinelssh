@@ -12,7 +12,7 @@
 
 ## Le projet
 
-Application web qui analyse un fichier de journal SSH (`auth.log`), repère les adresses IP suspectes, leur attribue une gravité et présente les résultats à un administrateur connecté. Usage local uniquement (127.0.0.1).
+Site web multi-comptes (D20) : chacun crée un compte (nom + mot de passe, sans e-mail), dépose son journal SSH (`auth.log`) et voit ses propres analyses : IP suspectes, gravité, carte, commande de blocage. Un rôle administrateur gère les comptes (liste, suppression) sans voir leurs analyses. **C'est un site web, pas une application à installer** : seule la mise en ligne (serveur, HTTPS) n'est pas encore prévue ; pour l'instant il tourne sur 127.0.0.1.
 
 - 3 règles de détection, une gravité par règle :
   - R1 attaque persistante : ≥ 20 échecs dans le fichier → moyenne
@@ -28,23 +28,25 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
   - `sentinel/models.py` : dataclasses `Event` (time, kind, user, ip) et `SuspectIP` (ip, failures, severity, rules, users, first_seen, last_seen, `to_dict()`).
   - `sentinel/parser.py` : `LogParser` (`parse_line`, `parse_text`, `_read_time` : ancien format syslog et format ISO 8601 d'Ubuntu 23.10+, D16).
   - `sentinel/detector.py` : `Detector` (seuils à la création ; `detect`, `_is_persistent`, `_is_fast`, `_is_compromised`, `severity_of`).
-  - `sentinel/database.py` : `Database` (`connect` avec `PRAGMA foreign_keys = ON`, `init_db`, `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis`, `delete_older_than` (purge des 30 jours), `get_recidivists`, `get_user`, `create_user` ; un id plus grand que `SQLITE_MAX_INT` = analyse introuvable).
-  - `sentinel/config.py` : seuils, `DB_PATH`, `MAX_UPLOAD_MB` / `MAX_UPLOAD_BYTES` (50 Mo, D17), `ALLOWED_EXTENSIONS`, `SECRET_KEY` (lue dans `.env`), `GEO_CITY_DB` / `GEO_ASN_DB`.
+  - `sentinel/database.py` : `Database` (`connect` avec `PRAGMA foreign_keys = ON`, `init_db`, `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis`, `get_recidivists` — toutes avec le `user_id` du compte connecté et `WHERE user_id = ?` —, `delete_older_than` (purge des 30 jours), `get_user`, `get_user_by_id`, `create_user` (rôle `user` par défaut), `update_username`, `update_password_hash` (mettent `updated_at` à jour), `list_users`, `delete_user` ; ids des comptes et des analyses = UUID créés par `new_id()`).
+  - `sentinel/config.py` : seuils, `DB_PATH`, `MAX_UPLOAD_MB` / `MAX_UPLOAD_BYTES` (50 Mo, D17), `ALLOWED_EXTENSIONS`, `USERNAME_PATTERN`, `MIN_PASSWORD_LENGTH` (12), `MAX_PASSWORD_LENGTH` (128), `LOGIN_MAX_FAILURES`/`LOGIN_WINDOW` (5 en 15 min), `REGISTER_MAX_ATTEMPTS`/`REGISTER_WINDOW` (5 par heure), `SECRET_KEY` (lue dans `.env`), `GEO_CITY_DB` / `GEO_ASN_DB`.
+  - `sentinel/limiter.py` : `RateLimiter` (`is_blocked`, `record`, `reset`), compteurs par IP en mémoire (même idée que R2).
   - `sentinel/geo.py` : `GeoLocator` (`locate`) lit les bases DB-IP Lite de `backend/data/` (téléchargées par `scripts/download_geodb.sh`, jamais commitées) ; position calculée à la lecture, jamais stockée (D14).
-  - `schema.sql` (dans `backend/`) : création des 3 tables.
-  - `app.py` : `MemoryRequest` (fichier envoyé gardé en mémoire, jamais de fichier temporaire, D17), 8 routes, `login_required`, `block_command(ip)`, erreurs JSON 400/401/404/405/413/500, commande `flask create-admin`, sert `frontend/dist` en production.
+  - `schema.sql` (dans `backend/`) : création des 4 tables et des 2 rôles.
+  - `app.py` : `MemoryRequest` (fichier envoyé gardé en mémoire, jamais de fichier temporaire, D17), 16 routes, `login_required` (relit le compte à chaque requête dans `g.user`), `admin_required` (403), `read_credentials` (refuse un mot de passe de plus de 128 caractères), `username_error`, `password_error`, `password_matches`, `update_account`, `managed_user` (403 si la cible est un admin), convertisseurs `<uuid:…>`, `login_limiter` / `register_limiter` (429), `block_command(ip)`, erreurs JSON 400/401/403/404/405/413/429/500, commande `flask create-admin` (seul moyen de créer un admin), sert `frontend/dist` en production.
   - `cli.py` : mode terminal, sans base.
-- **Base** : SQLite, 3 tables : `analyses`, `suspect_ips` (FK `analysis_id` ON DELETE CASCADE), `users` (username UNIQUE, password_hash).
-- **API** (JSON, erreurs `{"error": "..."}`) : `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/analyses` (multipart, champ `file`), `GET /api/analyses`, `GET /api/analyses/<id>`, `DELETE /api/analyses/<id>`, `GET /api/recidivists`. Session obligatoire (401) sauf login et logout.
-- **Front-end** : React + Vite, React Router, Recharts, dans `frontend/`. Pages : LandingPage (présentation publique, `/presentation`, D15), LoginPage, HomePage, AnalysisPage, PrivacyPage. Composants : ProtectedRoute, Header, UploadForm, HistoryTable, RecidivistsTable, SummaryCards (verdict + chiffres), TopIpsChart, SuspectsTable, SeverityBadge, CopyButton, et depuis D14 : WorldMap, CountryList, IpDetails, SeverityLegend, BlockCommandHelp (aide sous la commande de blocage). Fonctions de mise en forme dans `src/format.js`. Thème sombre, polices IBM Plex (npm). Toutes les requêtes dans `src/api.js`. Proxy Vite `/api` → `http://127.0.0.1:5000` en développement.
+- **Base** : SQLite, 4 tables : `roles` (`admin`, `user`), `users` (id UUID, username UNIQUE COLLATE NOCASE, password_hash, FK `role_id`, created_at, updated_at), `analyses` (id UUID, FK `user_id` ON DELETE CASCADE), `suspect_ips` (FK `analysis_id` ON DELETE CASCADE). Cardinalités : un compte a un seul rôle (users (1,1) — (0,n) roles), une analyse appartient à un compte.
+- **API** (JSON, erreurs `{"error": "..."}`) : `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` (id, username, role, created_at, updated_at), `PATCH /api/auth/me` (nom et/ou mot de passe, l'actuel redemandé), `DELETE /api/auth/me` (supprimer son compte, mot de passe redemandé ; refusé à un admin), `POST /api/analyses` (multipart, champ `file`), `GET /api/analyses`, `GET /api/analyses/<id>`, `DELETE /api/analyses/<id>`, `GET /api/recidivists`, `GET /api/users` (admin), `GET`/`PATCH`/`DELETE /api/users/<id>` et `DELETE /api/users/<id>/analyses/<id>` (admin ; seulement un compte `user`, sinon 403 ; analyses réduites à id, date, fichier). Session obligatoire (401) sauf register, login et logout ; analyse d'un autre compte = 404 ; route admin pour un `user` = 403.
+- **Front-end** : React + Vite, React Router, Recharts, dans `frontend/`. Pages : LandingPage (présentation publique à `/`, D19), LoginPage, RegisterPage (`/inscription`, D20), HomePage (espace du compte à `/analyse`, D19), AnalysisPage, ProfilePage (`/compte`, D21), AdminPage (`/comptes`, admin : son compte à part, puis la liste), UserAdminPage (`/comptes/:id`, admin), PrivacyPage. Composants : ProtectedRoute, Header, UploadForm, HistoryTable, RecidivistsTable, SummaryCards (verdict + chiffres), TopIpsChart, SuspectsTable, SeverityBadge, CopyButton, et depuis D14 : WorldMap, CountryList, IpDetails, SeverityLegend, BlockCommandHelp (aide sous la commande de blocage), et depuis D20 : UsersTable, DeleteAccountForm (ProfilePage, `user` seulement), AccountPrompt (invite `nom@sentinelssh:~$` / `#`, bouton-lien vers `/compte` dans le Header et la LandingPage ; remplace l'onglet « Mon compte »), AccountInfo (en-tête du profil : invite en grand, rôle, dates), EditableRow (ligne de réglage qui ouvre son formulaire), UsernameForm, PasswordForm, AnalysisRefsTable, LogoutButton (Header, et LandingPage si connecté), LogFileHelp (aide « quel fichier envoyer » : Debian/Ubuntu, Red Hat, journalctl, archives, scp ; serveur Windows non pris en charge). Diagrammes en Mermaid dans `docs/diagrammes.md` (les PNG de `docs/images/` sont ceux d'avant D20). Fonctions de mise en forme dans `src/format.js`. Thème sombre, polices IBM Plex (npm). Toutes les requêtes dans `src/api.js`. Proxy Vite `/api` → `http://127.0.0.1:5000` en développement.
 - **Production** : `npm run build` puis `gunicorn -b 127.0.0.1:8000 app:app`.
 
 ## Précisions tirées de la conception
 
 - Gravité : exactement `"moyenne"`, `"elevee"` (sans accent), `"critique"` — ce sont les valeurs du `CHECK` de la table `suspect_ips`.
-- `create-admin` refuse un mot de passe de moins de 12 caractères.
+- `create-admin` et l'inscription refusent un mot de passe de moins de 12 caractères ; nom d'utilisateur : 3 à 30 caractères `[A-Za-z0-9._-]`.
+- L'administrateur ne voit ni le mot de passe ni le contenu des analyses d'un user (seulement id, date, fichier) ; il peut renommer, réinitialiser le mot de passe, supprimer le compte ou une analyse. Un compte admin ne se gère jamais par `/api/users` (403) et ne peut pas être supprimé. Un user ne voit que son propre compte.
 - `first_seen` / `last_seen` enregistrés avec l'année (`1999-12-31 23:59:40`, D18) ; `format.js` lit aussi l'ancien format sans année.
-- Tests : `test_parser.py`, `test_detector.py`, `test_database.py`, `test_api.py`, `test_geo.py` ; mini-journaux dans `backend/tests/samples/`.
+- Tests : `test_parser.py`, `test_detector.py`, `test_database.py`, `test_api.py`, `test_geo.py`, `test_limiter.py` ; mini-journaux dans `backend/tests/samples/`.
 - Checklist de bout en bout : celle du Stage 3 (§6.2, 13 scénarios).
 - CI : `.github/workflows/tests.yml`.
 - Durée de conservation : 30 jours, appliquée par une requête `DELETE` au démarrage (décision D11, codée au sprint 2).
@@ -55,6 +57,7 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 - Requêtes SQL paramétrées uniquement (`?`), jamais de f-string ni de concaténation.
 - Jamais `dangerouslySetInnerHTML` ; tout affichage passe par le JSX.
 - Mots de passe hachés avec Werkzeug ; même message « Identifiants incorrects » si le nom ou le mot de passe est faux.
+- Toute requête SQL sur une analyse filtre sur le compte connecté (`user_id`) ; jamais d'accès à l'analyse d'un autre compte.
 - Cookie de session HttpOnly + `SESSION_COOKIE_SAMESITE = "Lax"` ; `SECRET_KEY` jamais dans le code.
 - Le fichier envoyé n'est jamais écrit sur le disque ; seules les IP suspectes sont stockées (RGPD).
 
@@ -74,7 +77,9 @@ Application web qui analyse un fichier de journal SSH (`auth.log`), repère les 
 - Bloc 1 (moteur d'analyse, PR #19) et bloc 2 (base, API, connexion, CI, PR #20) fusionnés dans `develop` (`ed46c31`).
 - Bloc 3 (front React, thème sombre, géolocalisation DB-IP + carte (D14), page de présentation (D15), collection Postman, test Loghub, branche `feature/frontend`) : écrit et testé, voir `docs/testing/test-report.md`.
 - 27/10 : nouveau format de date (D16), accueil enrichi, aide de la commande de blocage, couleurs vives, limite d'envoi à 50 Mo et fichier gardé en mémoire (D17), carte accélérée, vérification générale (rapport de tests §8).
-- Reste : PR `feature/frontend` → `develop`, fusion dans `main`, tag v1.0.0, lancement en production, README final ; revues et rétrospectives des sprints (`docs/sprints/`, encore vides).
+- 28/10 (soir) : profils de compte (D21) : `/compte`, `/comptes`, `/comptes/:id`, modification du nom et du mot de passe, UUID, `updated_at` ; 171 tests. Base locale à recréer (schéma changé).
+- 28/10 : passage en site multi-comptes (D20) : inscription, rôles admin/user, analyses par compte, page Comptes, suppression de son compte, limitation des tentatives ; revue de code appliquée ; 146 tests ; diagrammes Mermaid, Postman et rapport de tests (§9) à jour. La base locale `backend/sentinel.db` de l'ancien schéma doit être recréée.
+- Reste : vérification dans le navigateur (inscription, Comptes, téléphone) et passage newman de la collection ; PR `feature/frontend` → `develop`, fusion dans `main`, tag v1.0.0, lancement en production, README final ; revues et rétrospectives des sprints (`docs/sprints/`, encore vides).
 - **À mettre à jour à chaque début de sprint.**
 
 ## Documents de référence

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { me } from '../api.js'
 import SeverityBadge from '../components/SeverityBadge.jsx'
+import AccountPrompt from '../components/AccountPrompt.jsx'
+import LogoutButton from '../components/LogoutButton.jsx'
 import SeverityLegend from '../components/SeverityLegend.jsx'
 
 // Extrait d'un journal SSH montré en exemple. Adresses de documentation
@@ -19,7 +21,7 @@ const LOG_LINES = [
 const STEPS = [
   {
     title: 'Envoyer le journal',
-    text: 'L\'administrateur envoie le fichier auth.log du serveur (.log ou .txt, 50 Mo maximum).',
+    text: 'Créez un compte, puis envoyez depuis votre navigateur le fichier auth.log de votre serveur (.log ou .txt, 50 Mo maximum).',
   },
   {
     title: 'Analyser',
@@ -31,46 +33,56 @@ const STEPS = [
   },
 ]
 
-// Garanties de l'application (sécurité et RGPD).
+// Garanties du site (sécurité et RGPD).
 const PROMISES = [
   {
-    title: 'Tout reste en local',
-    text: 'L\'application tourne sur 127.0.0.1 : aucune donnée n\'est envoyée à un service extérieur, même la géolocalisation.',
+    title: 'Aucun service extérieur',
+    text: 'Vos journaux ne sont transmis à aucun tiers. Même la géolocalisation est faite par SentinelSSH, avec une base installée sur son propre serveur.',
   },
   {
     title: 'Le fichier n\'est jamais enregistré',
-    text: 'Il est analysé en mémoire, sans fichier temporaire, puis oublié. Seules les IP suspectes sont gardées, puis supprimées après 30 jours (au démarrage de l\'application).',
+    text: 'Il est analysé en mémoire, sans fichier temporaire, puis oublié. Seules les IP suspectes sont gardées, puis supprimées après 30 jours (au démarrage du site).',
   },
   {
     title: 'L\'humain décide',
-    text: 'La commande de blocage est proposée, jamais exécutée : c\'est l\'administrateur qui choisit de bloquer.',
+    text: 'La commande de blocage est proposée, jamais exécutée : c\'est vous qui choisissez de bloquer, sur votre serveur.',
   },
   {
-    title: 'Accès protégé',
-    text: 'Un seul compte administrateur, mot de passe haché ; les résultats ne sont visibles qu\'après connexion.',
+    title: 'Vos analyses restent à vous',
+    text: 'Chaque compte ne voit que ses propres analyses. Les mots de passe sont hachés, jamais stockés en clair, et aucune adresse e-mail n\'est demandée.',
   },
 ]
 
-// Page publique de présentation : ce que fait SentinelSSH, puis la connexion.
+// Page publique de présentation : ce que fait SentinelSSH, puis l'inscription.
 export default function LandingPage() {
-  // L'administrateur est-il déjà connecté ? On demande à l'API (me).
-  const [connected, setConnected] = useState(false)
+  // Le visiteur est-il déjà connecté ? On demande à l'API (me).
+  // account : le compte connecté, ou null.
+  const [account, setAccount] = useState(null)
+  const connected = account !== null
 
   useEffect(() => {
     me()
-      .then(() => setConnected(true))
+      .then(setAccount)
       // Pas de session (ou serveur injoignable) : on garde « Se connecter ».
-      .catch(() => setConnected(false))
+      .catch(() => setAccount(null))
   }, [])
 
-  // Bouton principal : vers l'application si connecté, sinon vers la connexion.
-  let mainLink = { to: '/login', label: 'Se connecter' }
+  // Bouton principal : vers ses analyses si connecté, sinon l'inscription.
+  let mainLink = { to: '/inscription', label: 'Créer un compte' }
   if (connected) {
-    mainLink = { to: '/', label: 'Analyser un journal' }
+    mainLink = { to: '/analyse', label: 'Analyser un journal' }
   }
 
   return (
     <main className="page landing">
+      {/* Connecté seulement : le compte et le bouton Déconnexion, en haut
+          à droite (pas tout le bandeau : la page reste une présentation). */}
+      {connected && (
+        <div className="landing-top">
+          <AccountPrompt username={account.username} role={account.role} to="/compte" />
+          <LogoutButton />
+        </div>
+      )}
       <section className="hero">
         <div className="hero-text">
           <div className="hero-brand">
@@ -81,14 +93,20 @@ export default function LandingPage() {
           <h1>Repérez les attaques SSH cachées dans vos journaux.</h1>
           <p className="hero-lead">
             Chaque jour, des robots essaient des milliers de mots de passe sur les
-            serveurs ouverts à Internet. SentinelSSH lit le journal du serveur,
-            repère les adresses IP qui attaquent, leur donne une gravité et
-            propose une commande pour les bloquer.
+            serveurs ouverts à Internet. Envoyez le journal de votre serveur :
+            SentinelSSH repère les adresses IP qui attaquent, leur donne une
+            gravité et propose une commande pour les bloquer.
           </p>
           <div className="hero-actions">
             {/* Link avec l'apparence d'un bouton : c'est une navigation, pas une action. */}
             <Link to={mainLink.to} className="button-link">{mainLink.label}</Link>
-            <a href="#fonctionnement" className="button-link button-link-secondary">Comment ça marche</a>
+            {/* Connecté : l'ancre vers les étapes (un <a>, car Link ne
+                fait pas défiler jusqu'à l'ancre). Sinon : la connexion. */}
+            {connected ? (
+              <a href="#fonctionnement" className="button-link button-link-secondary">Comment ça marche</a>
+            ) : (
+              <Link to="/login" className="button-link button-link-secondary">Se connecter</Link>
+            )}
           </div>
         </div>
 
@@ -152,7 +170,12 @@ export default function LandingPage() {
           SQLite, React.
         </p>
         <p>
-          <Link to={mainLink.to}>{mainLink.label}</Link> ·<Link to="/confidentialite">Confidentialité</Link>
+          {/* Attribution exigée par la licence CC BY 4.0 de DB-IP. */}
+          Géolocalisation : <a href="https://db-ip.com" target="_blank" rel="noreferrer">IP Geolocation by DB-IP</a>{' '}
+          (base DB-IP Lite, licence CC BY 4.0).
+        </p>
+        <p>
+          <Link to={mainLink.to}>{mainLink.label}</Link> · <Link to="/confidentialite">Confidentialité</Link>
         </p>
       </footer>
     </main>

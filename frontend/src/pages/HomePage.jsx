@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteAnalysis, listAnalyses, listRecidivists } from '../api.js'
 import HistoryTable from '../components/HistoryTable.jsx'
+import LogFileHelp from '../components/LogFileHelp.jsx'
 import RecidivistsTable from '../components/RecidivistsTable.jsx'
 import SeverityLegend from '../components/SeverityLegend.jsx'
 import UploadForm from '../components/UploadForm.jsx'
@@ -53,20 +54,11 @@ export default function HomePage() {
       <section className="card upload-card">
         <h1>Analyser un journal SSH</h1>
         <p className="muted">
-          Envoyez un fichier auth.log : SentinelSSH repère les IP qui attaquent
-          le serveur et propose une commande pour les bloquer.
+          Envoyez le journal SSH de votre serveur (auth.log ou secure) : SentinelSSH
+          repère les IP qui attaquent le serveur et propose une commande pour les bloquer.
         </p>
         <UploadForm />
-        {/* <details> : l'aide est repliée, elle ne gêne pas l'habitué. */}
-        <details className="upload-help">
-          <summary>Où trouver le fichier auth.log ?</summary>
-          <p>
-            Sur un serveur Ubuntu ou Debian, le journal SSH est{' '}
-            <code>/var/log/auth.log</code>. Il est protégé (lisible par root) : copiez-le
-            d'abord dans votre dossier, puis envoyez la copie.
-          </p>
-          <pre><code>sudo cp /var/log/auth.log ~/auth.log{'\n'}sudo chown $USER ~/auth.log</code></pre>
-        </details>
+        <LogFileHelp />
       </section>
 
       {error && <p className="error" role="alert">{error}</p>}
@@ -94,35 +86,41 @@ export default function HomePage() {
             </li>
           </ul>
           <p className="muted overview-note">
-            Les analyses de plus de 30 jours sont supprimées à chaque démarrage de l'application.
+            Les analyses de plus de 30 jours sont supprimées à chaque démarrage du site.
           </p>
         </section>
       )}
 
+      {/* 2 cases côte à côte, de la même hauteur : l'historique (qui défile
+          au-delà de 70 % de l'écran) et les récidivistes (qui remplissent
+          la hauteur de l'historique et défilent). */}
       <div className="home-grid">
         <section className="card">
           <h2>Historique des analyses</h2>
           {analyses === null && !error && <p>Chargement…</p>}
           {analyses !== null && (
-            <HistoryTable analyses={analyses} onDelete={handleDelete} />
+            <div className="scroll-list">
+              <HistoryTable analyses={analyses} onDelete={handleDelete} />
+            </div>
           )}
         </section>
 
-        {/* Colonne de droite : 2 cases l'une sous l'autre. */}
-        <div className="home-side">
-          <section className="card">
-            <h2>IP récidivistes</h2>
-            <p className="muted section-help">IP vues dans au moins 2 analyses.</p>
-            {recidivists === null && !error && <p>Chargement…</p>}
-            {recidivists !== null && <RecidivistsTable recidivists={recidivists} />}
-          </section>
-
-          <section className="card">
-            <h2>Les 3 niveaux de gravité</h2>
-            <SeverityLegend compact />
-          </section>
-        </div>
+        <section className="card card-fill">
+          <h2>IP récidivistes</h2>
+          <p className="muted section-help">IP vues dans au moins 2 analyses.</p>
+          {recidivists === null && !error && <p>Chargement…</p>}
+          {recidivists !== null && (
+            <div className="fill">
+              <RecidivistsTable recidivists={recidivists} />
+            </div>
+          )}
+        </section>
       </div>
+
+      <section className="card">
+        <h2>Les 3 niveaux de gravité</h2>
+        <SeverityLegend />
+      </section>
 
       <footer className="footer">
         <Link to="/confidentialite">Confidentialité</Link>

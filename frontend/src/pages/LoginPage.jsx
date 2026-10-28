@@ -14,7 +14,7 @@ export default function LoginPage() {
     setError('')
     try {
       await login(username, password)
-      navigate('/', { replace: true })
+      navigate('/analyse', { replace: true })
     } catch (err) {
       // Message de l'API, ex. « Identifiants incorrects ».
       setError(err.message)
@@ -25,12 +25,12 @@ export default function LoginPage() {
     <main className="login">
       <form className="card login-card" onSubmit={handleSubmit}>
         {/* Le logo ramène à la page de présentation. */}
-        <Link to="/presentation" aria-label="Présentation de SentinelSSH">
+        <Link to="/" aria-label="Présentation de SentinelSSH">
           <img src="/favicon.svg" alt="" width="40" height="40" />
         </Link>
         <h1>SentinelSSH</h1>
         <p className="muted">
-          Connexion administrateur pour analyser les journaux SSH du serveur.
+          Connectez-vous pour analyser les journaux SSH de vos serveurs.
         </p>
 
         <label htmlFor="username">Nom d'utilisateur</label>
@@ -56,7 +56,7 @@ export default function LoginPage() {
         {error && <p className="error" role="alert">{error}</p>}
       </form>
       <p className="login-link">
-        <Link to="/presentation">Découvrir SentinelSSH</Link> · <Link to="/confidentialite">Confidentialité</Link>
+        Pas encore de compte ? <Link to="/inscription">Créer un compte</Link> · <Link to="/confidentialite">Confidentialité</Link>
       </p>
     </main>
   )

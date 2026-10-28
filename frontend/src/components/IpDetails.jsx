@@ -23,13 +23,17 @@ export default function IpDetails({ suspect }) {
   let rateText = null
   if (seconds > 0) {
     const perMinute = suspect.failures / (seconds / 60)
+    const perHour = perMinute * 60
     if (perMinute >= 1) {
       rateText = perMinute.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' échecs par minute'
-    } else {
-      // Attaque lente (sur des heures ou des jours) : « par minute »
-      // donnerait « 0 », on compte par heure.
-      const perHour = perMinute * 60
+    } else if (perHour >= 1) {
+      // Attaque lente (sur des heures) : « par minute » donnerait « 0 »,
+      // on compte par heure.
       rateText = perHour.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' échecs par heure'
+    } else {
+      // Attaque très lente (quelques essais sur des jours) : par jour.
+      const perDay = perHour * 24
+      rateText = perDay.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' échecs par jour'
     }
   }
 
@@ -55,13 +59,37 @@ export default function IpDetails({ suspect }) {
           <dt>Localisation</dt>
           <dd>{place}</dd>
           {geo && geo.latitude !== null && (
-            <dd className="mono muted">{geo.latitude.toFixed(2)}, {geo.longitude.toFixed(2)}</dd>
+            <>
+              <dd className="mono muted">{geo.latitude.toFixed(2)}, {geo.longitude.toFixed(2)}</dd>
+              <dd>
+                <details className="term-help">
+                  <summary>Que veulent dire ces chiffres ?</summary>
+                  <p>
+                    Les coordonnées GPS (latitude, longitude) du réseau de l'IP : elles
+                    placent le point sur la carte. Ce n'est pas l'adresse de l'attaquant.
+                  </p>
+                </details>
+              </dd>
+            </>
           )}
         </div>
         <div>
           <dt>Opérateur du réseau</dt>
           <dd>{geo && geo.as_org ? geo.as_org : 'Inconnu'}</dd>
-          {geo && geo.asn && <dd className="mono muted">AS{geo.asn}</dd>}
+          {geo && geo.asn && (
+            <>
+              <dd className="mono muted">AS{geo.asn}</dd>
+              <dd>
+                <details className="term-help">
+                  <summary>C'est quoi AS{geo.asn} ?</summary>
+                  <p>
+                    Le numéro unique du réseau de l'opérateur sur Internet
+                    (ici {geo.as_org ? geo.as_org : 'cet opérateur'}).
+                  </p>
+                </details>
+              </dd>
+            </>
+          )}
         </div>
         <div>
           <dt>Première et dernière tentative</dt>

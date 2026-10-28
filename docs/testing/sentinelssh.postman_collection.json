@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "SentinelSSH — API",
-    "description": "Les 8 routes de l'API SentinelSSH. Lancer Flask (flask --app app run dans backend/), mettre le mot de passe administrateur dans la variable password, puis exécuter la collection dans l'ordre (Run collection). Les requêtes d'envoi de fichier demandent de choisir le fichier dans l'onglet Body.",
+    "description": "Les 16 routes de l'API SentinelSSH. Lancer Flask (flask --app app run dans backend/), mettre le mot de passe de l'administrateur (créé par flask create-admin) dans la variable password, puis exécuter la collection dans l'ordre (Run collection). Les requêtes d'envoi de fichier demandent de choisir le fichier dans l'onglet Body. Chaque passage fait 4 tentatives d'inscription (2 comptes de test, supprimés à la fin) ; l'inscription est limitée à 5 tentatives par heure et par IP : pour relancer la collection dans l'heure, redémarrer Flask (les compteurs sont en mémoire).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -242,7 +242,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('code 200', () => pm.response.to.have.status(200));",
-                  "pm.test('nom', () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get('username')));"
+                  "pm.test('nom', () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get('username')));",
+                  "pm.test('rôle admin', () => pm.expect(pm.response.json().role).to.eql('admin'));"
                 ]
               }
             }
@@ -529,7 +530,7 @@
           "description": ""
         },
         {
-          "name": "GET /api/analyses/999999 → 404",
+          "name": "GET /api/analyses/<UUID inconnu> → 404",
           "event": [
             {
               "listen": "test",
@@ -546,14 +547,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/analyses/999999",
+              "raw": "{{baseUrl}}/api/analyses/00000000-0000-4000-8000-000000000000",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "analyses",
-                "999999"
+                "00000000-0000-4000-8000-000000000000"
               ]
             }
           },
@@ -597,7 +598,714 @@
       ]
     },
     {
-      "name": "5. Suppression et déconnexion",
+      "name": "5. Inscription et séparation des comptes",
+      "item": [
+        {
+          "name": "Register : mot de passe trop court → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"essai\", \"password\": \"court\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "Register : nouveau compte → 201 (rôle user)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Nom unique à chaque passage (la base refuse un nom déjà pris).",
+                  "pm.collectionVariables.set('newUser', 'essai' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 201', () => pm.response.to.have.status(201));",
+                  "pm.test('rôle user', () => pm.expect(pm.response.json().role).to.eql('user'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{newUser}}\", \"password\": \"un-long-mot-de-passe\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "Register : même nom → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 409', () => pm.response.to.have.status(409));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Ce nom d'utilisateur est déjà pris\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{newUser}}\", \"password\": \"un-long-mot-de-passe\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "GET /api/analyses (nouveau compte) → liste vide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 200', () => pm.response.to.have.status(200));",
+                  "pm.test('historique vide', () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analyses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analyses"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "GET /api/analyses/{{analysisId}} (analyse de l'admin) → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 404', () => pm.response.to.have.status(404));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Analyse introuvable\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analyses/{{analysisId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analyses",
+                "{{analysisId}}"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "GET /api/users (simple user) → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 403', () => pm.response.to.have.status(403));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Accès réservé à l'administrateur\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "PATCH /api/auth/me : nouveau nom → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 200', () => pm.response.to.have.status(200));",
+                  "pm.test('nouveau nom', () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get('newUser') + 'b'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{newUser}}b\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "PATCH /api/auth/me : mot de passe sans l'actuel → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Mot de passe actuel incorrect\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"nouveau-mot-de-passe\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "DELETE /api/auth/me : mauvais mot de passe → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Mot de passe incorrect\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"mauvais\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "DELETE /api/auth/me → 204 (compte supprimé)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"un-long-mot-de-passe\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "GET /api/auth/me après suppression → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "Register : 2e compte (pour l'admin) → 201",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Nom unique à chaque passage (la base refuse un nom déjà pris).",
+                  "pm.collectionVariables.set('newUser', 'essai' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{newUser}}\", \"password\": \"un-long-mot-de-passe\"}"
+            }
+          },
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "6. Gestion des comptes (admin)",
+      "item": [
+        {
+          "name": "Login admin → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{username}}\", \"password\": \"{{password}}\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "GET /api/users → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 200', () => pm.response.to.have.status(200));",
+                  "const users = pm.response.json();",
+                  "const created = users.find((u) => u.username === pm.collectionVariables.get('newUser'));",
+                  "const admin = users.find((u) => u.role === 'admin');",
+                  "pm.test('compte créé présent', () => pm.expect(created).to.be.an('object'));",
+                  "pm.test('pas de hachage', () => pm.expect(created).to.not.have.property('password_hash'));",
+                  "pm.collectionVariables.set('userId', created.id);",
+                  "pm.collectionVariables.set('adminId', admin.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "GET /api/users/{{userId}} → 200 (sans secret)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 200', () => pm.response.to.have.status(200));",
+                  "const u = pm.response.json();",
+                  "pm.test('pas de hachage', () => pm.expect(u).to.not.have.property('password_hash'));",
+                  "pm.test('analyses : id, date, fichier', () => pm.expect(u.analyses).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "PATCH /api/users/{{userId}} : nouveau mot de passe → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"mot-de-passe-reinitialise\"}"
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "DELETE /api/users/{{adminId}} (un admin) → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 403', () => pm.response.to.have.status(403));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Un compte administrateur ne peut pas être géré ici\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{adminId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{adminId}}"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "DELETE /api/users/{{userId}} → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "description": ""
+        },
+        {
+          "name": "DELETE /api/users/{{userId}} à nouveau → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code 404', () => pm.response.to.have.status(404));",
+                  "pm.test('message', () => pm.expect(pm.response.json().error).to.eql(\"Compte introuvable\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "7. Suppression et déconnexion",
       "item": [
         {
           "name": "DELETE /api/analyses/{{analysisId}} → 204",
@@ -771,6 +1479,18 @@
     },
     {
       "key": "secondId",
+      "value": ""
+    },
+    {
+      "key": "newUser",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "adminId",
       "value": ""
     }
   ]

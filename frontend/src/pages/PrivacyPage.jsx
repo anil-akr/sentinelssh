@@ -10,6 +10,12 @@ export default function PrivacyPage() {
       <section className="card">
         <h2>Données traitées</h2>
         <p>
+          Pour votre compte : le nom d'utilisateur, le mot de passe sous forme
+          hachée (jamais en clair), le rôle (utilisateur ou administrateur), la
+          date d'inscription et celle de la dernière modification. Aucune
+          adresse e-mail n'est demandée.
+        </p>
+        <p>
           Le fichier envoyé est analysé en mémoire puis oublié : il n'est jamais
           enregistré sur le disque. SentinelSSH conserve seulement, pour chaque
           analyse, le nom du fichier, la date et des compteurs, et pour chaque IP
@@ -32,9 +38,14 @@ export default function PrivacyPage() {
       <section className="card">
         <h2>Finalité et base légale</h2>
         <p>
-          Ces données servent uniquement à protéger le serveur contre les
-          attaques sur SSH. Base légale : l'intérêt légitime, la sécurité des
-          réseaux étant citée par le considérant 49 du RGPD.
+          Les données du compte servent à vous connecter et à garder vos
+          analyses séparées de celles des autres comptes. Base légale :
+          l'exécution du service que vous demandez en créant un compte.
+        </p>
+        <p>
+          Les IP suspectes servent uniquement à protéger votre serveur contre
+          les attaques sur SSH. Base légale : l'intérêt légitime, la sécurité
+          des réseaux étant citée par le considérant 49 du RGPD.
         </p>
       </section>
 
@@ -42,17 +53,25 @@ export default function PrivacyPage() {
         <h2>Durée de conservation</h2>
         <p>
           Les analyses de plus de 30 jours sont supprimées automatiquement à
-          chaque démarrage de l'application. L'administrateur peut aussi
-          supprimer une analyse à tout moment.
+          chaque démarrage du site. Vous pouvez aussi supprimer une analyse à
+          tout moment. Le compte (nom, mot de passe haché, date
+          d'inscription) est gardé jusqu'à ce que vous le supprimiez, ou que
+          l'administrateur le supprime à votre demande ; supprimer un compte
+          supprime aussi toutes ses analyses.
         </p>
       </section>
 
       <section className="card">
         <h2>Destinataires</h2>
         <p>
-          Aucun. L'application fonctionne en local : aucune donnée n'est envoyée
-          à un service extérieur. Le seul cookie est le cookie de session,
-          nécessaire à la connexion.
+          Aucun service extérieur : les données restent sur le serveur de
+          SentinelSSH. Chaque compte ne voit que ses propres analyses.
+          L'administrateur du site voit les comptes (nom, rôle, dates) pour les
+          gérer : il peut changer un nom, réinitialiser un mot de passe ou
+          supprimer un compte. De vos analyses, il ne voit que la date et le
+          nom du fichier, pour en supprimer une à votre demande : jamais leur
+          contenu, jamais votre mot de passe. Le seul cookie est le cookie de
+          session, nécessaire à la connexion.
         </p>
       </section>
 
@@ -70,8 +89,8 @@ export default function PrivacyPage() {
         <h2>Vos droits</h2>
         <p>
           Vous disposez d'un droit d'accès, de rectification, d'effacement et
-          d'opposition. Pour l'exercer, adressez-vous à l'administrateur du
-          serveur, qui peut supprimer les analyses concernées.
+          d'opposition. Dans « Mon compte », vous modifiez votre nom et votre
+          mot de passe, et vous supprimez vos analyses ou votre compte.
         </p>
       </section>
     </main>

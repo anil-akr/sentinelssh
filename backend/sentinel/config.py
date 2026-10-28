@@ -36,6 +36,24 @@ MAX_UPLOAD_MB = 50
 MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 ALLOWED_EXTENSIONS = {".log", ".txt"}
 
+# Comptes (décision D20). Nom : 3 à 30 caractères parmi lettres sans
+# accent, chiffres, point, tiret et tiret bas (rien qui puisse tromper à
+# l'affichage). Mot de passe : 12 caractères minimum, pour l'inscription
+# comme pour la commande create-admin.
+USERNAME_PATTERN = r"[A-Za-z0-9._-]{3,30}"
+MIN_PASSWORD_LENGTH = 12
+
+# Au-delà, le mot de passe est refusé avant d'être haché : sinon un envoi
+# de plusieurs Mo ferait travailler scrypt longtemps (déni de service).
+MAX_PASSWORD_LENGTH = 128
+
+# Limitation des tentatives par IP (comme la règle R2, contre la force
+# brute) : 5 échecs de connexion en 15 minutes, 5 inscriptions par heure.
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW = 15 * 60
+REGISTER_MAX_ATTEMPTS = 5
+REGISTER_WINDOW = 60 * 60
+
 # RGPD (décision D11) : les analyses de plus de 30 jours sont supprimées
 # au démarrage de l'application.
 RETENTION_DAYS = 30

@@ -43,45 +43,46 @@ export default function CountryList({ suspects }) {
   }
 
   // Total des échecs de tous les pays : la barre montre la part de chacun.
-  let total = 0
-  for (const row of rows) {
-    total += row.failures
-  }
+  // totalFailures additionne le champ failures de chaque ligne.
+  const total = totalFailures(rows)
 
   const shown = rows.slice(0, visible)
   const remaining = rows.length - shown.length
 
   return (
     <>
-      <ol className="country-list">
-        {shown.map((row) => {
-          // Part du pays en % ; « < 1 % » plutôt qu'un « 0 % » trompeur.
-          const share = (row.failures / total) * 100
-          const shareText = share < 1 ? '< 1 %' : Math.round(share) + ' %'
-          return (
-            <li key={row.code}>
-              <div className="country-line">
-                <span className="country-code">{row.code}</span>
-                <span className="country-name">{row.name}</span>
-                <span className="country-figures">
-                  {row.ips} IP, {row.failures.toLocaleString('fr-FR')} échecs
-                </span>
-              </div>
-              <div className="country-share-line">
-                {/* Rail gris + barre : part du pays dans le total des échecs. */}
-                <div className="country-track">
-                  {/* Couleur de la barre : gravité la plus haute du pays (comme la carte). */}
-                  <div
-                    className={`country-bar swatch-${row.worst}`}
-                    style={{ width: `${share}%` }}
-                  />
+      {/* fill : la liste prend la hauteur de la carte voisine et défile. */}
+      <div className="fill">
+        <ol className="country-list">
+          {shown.map((row) => {
+            // Part du pays en % ; « < 1 % » plutôt qu'un « 0 % » trompeur.
+            const share = (row.failures / total) * 100
+            const shareText = share < 1 ? '< 1 %' : Math.round(share) + ' %'
+            return (
+              <li key={row.code}>
+                <div className="country-line">
+                  <span className="country-code">{row.code}</span>
+                  <span className="country-name">{row.name}</span>
+                  <span className="country-figures">
+                    {row.ips} IP, {row.failures.toLocaleString('fr-FR')} échecs
+                  </span>
                 </div>
-                <span className="country-share">{shareText}</span>
-              </div>
-            </li>
-          )
-        })}
-      </ol>
+                <div className="country-share-line">
+                  {/* Rail gris + barre : part du pays dans le total des échecs. */}
+                  <div className="country-track">
+                    {/* Couleur de la barre : gravité la plus haute du pays (comme la carte). */}
+                    <div
+                      className={`country-bar swatch-${row.worst}`}
+                      style={{ width: `${share}%` }}
+                    />
+                  </div>
+                  <span className="country-share">{shareText}</span>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
       {/* Encore des pays cachés : on en montre 10 de plus. Tous visibles
           (et plus de 10) : on peut revenir aux 10 premiers. */}
       {remaining > 0 && (

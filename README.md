@@ -1,8 +1,8 @@
 # SentinelSSH
 
 **Analyseur de logs SSH — sécurité défensive.** SentinelSSH analyse le journal de connexions SSH d'un serveur Linux
-(`auth.log`), repère les adresses IP suspectes, leur attribue une gravité et présente les résultats dans une
-application web protégée par une connexion.
+(`auth.log`), repère les adresses IP suspectes, leur attribue une gravité et présente les résultats sur un
+site web : chacun crée son compte, envoie son journal et retrouve ses propres analyses.
 
 > Projet de fin d'année — Holberton School Bordeaux (Portfolio Project, Demo Day, titre RNCP niveau 5).
 > Auteur : Anil AKER — [github.com/anil-akr](https://github.com/anil-akr)
@@ -26,7 +26,11 @@ application web protégée par une connexion.
 
 ## Fonctionnalités
 
-- **Connexion** par un compte administrateur unique (mot de passe haché, session par cookie).
+- **Comptes** : inscription libre (nom + mot de passe, pas d'e-mail), connexion par session ; chaque compte ne voit
+  que ses propres analyses. Page **Mon compte** : informations, changement de nom et de mot de passe, ses analyses,
+  suppression du compte. Un rôle **administrateur** gère les comptes `user` (nom, réinitialisation du mot de passe,
+  suppression du compte ou d'une analyse à sa demande) sans jamais voir leur mot de passe ni le contenu de leurs
+  analyses (D20, D21).
 - **Analyse d'un fichier** `auth.log` (.log ou .txt, 50 Mo maximum) : lecture des tentatives de connexion SSH.
 - **Détection en 3 règles**, une gravité par règle :
 
@@ -40,31 +44,35 @@ application web protégée par une connexion.
   graphique du top 10, légende des gravités et tableau trié par gravité avec une **fiche détaillée par IP**
   (localisation, opérateur du réseau, durée et rythme de l'attaque, règles expliquées).
 - **Géolocalisation hors ligne** avec la base DB-IP Lite : aucune IP n'est envoyée à un service extérieur.
-- **Commande de blocage** (`iptables`) prête à copier, avec une aide (où la taper, `sudo`, vérifier, annuler) : l'outil propose, l'administrateur décide.
+- **Commande de blocage** (`iptables`) prête à copier, avec une aide (où la taper, `sudo`, vérifier, annuler) : l'outil propose, l'utilisateur décide.
 - **Accueil** : vue d'ensemble chiffrée, **historique** des analyses, suppression, liste des **IP récidivistes** (vues dans plusieurs analyses).
-- **Page de présentation** publique (le projet en une page, puis la connexion), **page Confidentialité**, interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
+- **Page de présentation** publique (le projet en une page, puis l'inscription ou la connexion), **page Confidentialité**, interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
 
 ## Architecture
 
-![Architecture de SentinelSSH](docs/images/architecture.png)
+Schéma : [docs/diagrammes.md](docs/diagrammes.md#architecture) (diagrammes en Mermaid, affichés par GitHub).
 
-- **Front-end** : React (Vite), 5 pages (présentation, connexion et confidentialité publiques ; accueil et détail d'une analyse protégés), toutes les requêtes dans `src/api.js`.
-- **API** : Flask, 8 routes JSON, session obligatoire sauf pour la connexion.
+- **Front-end** : React (Vite), 9 pages (présentation à `/`, inscription, connexion et confidentialité publiques ; espace d'analyse `/analyse`, détail d'une analyse, mon compte `/compte`, comptes `/comptes` et profil d'un user `/comptes/<id>` protégés), toutes les requêtes dans `src/api.js`.
+- **API** : Flask, 16 routes JSON, session obligatoire sauf pour l'inscription, la connexion et la déconnexion ; 5 routes réservées à l'administrateur ; tentatives de connexion et d'inscription limitées par IP (`RateLimiter`).
 - **Cœur d'analyse** : `LogParser` (lecture) et `Detector` (règles), en Python pur, sans dépendance au web ni à la base.
 - **Géolocalisation** : `GeoLocator` lit les bases locales DB-IP (`backend/data/*.mmdb`) ; la position est calculée à
   chaque lecture d'une analyse, jamais stockée (décision D14).
-- **Données** : `Database` (requêtes SQL paramétrées) et SQLite (3 tables).
+- **Données** : `Database` (requêtes SQL paramétrées) et SQLite (4 tables).
 
-Diagramme de classes : [docs/images/diagramme-classes.png](docs/images/diagramme-classes.png) ·
-diagrammes de séquence : [connexion](docs/images/sequence-connexion.png), [analyse](docs/images/sequence-analyse.png),
-[consultation](docs/images/sequence-consultation.png).
+[Diagramme de classes](docs/diagrammes.md#classes-du-back-end) · diagrammes de séquence :
+[connexion](docs/diagrammes.md#séquence--inscription-et-connexion), [analyse](docs/diagrammes.md#séquence--analyse-dun-fichier),
+[consultation](docs/diagrammes.md#séquence--consultation-dune-analyse).
 
 ## Base de données
 
-![Diagramme de la base de données](docs/images/diagramme-base-de-donnees.png)
+Diagramme et cardinalités : [docs/diagrammes.md](docs/diagrammes.md#base-de-données).
 
+- `users` et `analyses` ont pour clé un **UUID** (texte aléatoire, impossible à deviner) ; `users.updated_at` note le
+  dernier changement de nom ou de mot de passe.
+- `roles` (`admin`, `user`) 1 → N `users` (clé étrangère `role_id`) : chaque compte a un seul rôle.
+- `users` 1 → N `analyses` (clé étrangère `user_id`, suppression en cascade) : chaque analyse appartient à un compte.
 - `analyses` 1 → N `suspect_ips` (clé étrangère `analysis_id`, suppression en cascade).
-- `users` contient le compte administrateur ; le mot de passe n'est jamais stocké, seulement son hachage.
+- Supprimer un compte supprime donc ses analyses, puis leurs IP. Le mot de passe n'est jamais stocké, seulement son hachage.
 - SQLite désactive les clés étrangères par défaut : `PRAGMA foreign_keys = ON` à chaque connexion.
 
 ## Technologies
@@ -94,7 +102,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env               # puis remplacer SECRET_KEY (voir le fichier)
 ./scripts/download_geodb.sh        # bases de géolocalisation DB-IP (une fois par mois)
-flask --app app create-admin       # une seule fois
+flask --app app create-admin       # premier administrateur, une seule fois
 flask --app app run                # API sur http://127.0.0.1:5000
 
 # Front-end (terminal 2)
@@ -105,7 +113,7 @@ npm run dev                        # application sur http://localhost:5173
 
 ## Utilisation
 
-1. Se connecter avec le compte administrateur.
+1. Créer un compte (`/inscription`) ou se connecter.
 2. Envoyer un fichier `auth.log`. Deux exemples sont fournis :
    - `demo/demo.log` : 3 IP de documentation (203.0.113.x), une par gravité ; elles n'ont pas de position sur la carte ;
    - `demo/demo-monde.log` : 13 vraies IP d'attaquants tirées du jeu de données public
@@ -139,14 +147,27 @@ Toutes les routes échangent du JSON. Les erreurs ont la forme `{"error": "messa
 
 | Méthode | URL | Session | Rôle |
 |---|---|---|---|
+| POST | `/api/auth/register` | non | Inscription (`{username, password}`), crée un compte `user` et ouvre la session |
 | POST | `/api/auth/login` | non | Connexion (`{username, password}`) |
 | POST | `/api/auth/logout` | non | Déconnexion |
-| GET | `/api/auth/me` | oui | Utilisateur connecté |
+| GET | `/api/auth/me` | oui | Compte connecté et son rôle |
+| PATCH | `/api/auth/me` | oui | Changer son nom (`{username}`) et/ou son mot de passe (`{password, current_password}`) |
+| DELETE | `/api/auth/me` | oui | Suppression de son compte et de ses analyses (`{password}`) ; refusée pour un admin |
 | POST | `/api/analyses` | oui | Envoi d'un fichier (`multipart/form-data`, champ `file`) |
-| GET | `/api/analyses` | oui | Historique des analyses |
-| GET | `/api/analyses/<id>` | oui | Détail d'une analyse et de ses IP suspectes |
-| DELETE | `/api/analyses/<id>` | oui | Suppression d'une analyse |
-| GET | `/api/recidivists` | oui | IP présentes dans au moins 2 analyses |
+| GET | `/api/analyses` | oui | Historique des analyses du compte |
+| GET | `/api/analyses/<id>` | oui | Détail d'une analyse du compte (404 si elle appartient à un autre) |
+| DELETE | `/api/analyses/<id>` | oui | Suppression d'une analyse du compte |
+| GET | `/api/recidivists` | oui | IP présentes dans au moins 2 analyses du compte |
+| GET | `/api/users` | admin | Liste des comptes (nom, rôle, date d'inscription) |
+| GET | `/api/users/<id>` | admin | Profil d'un `user` : nom, rôle, dates ; ses analyses réduites à id, date et fichier |
+| PATCH | `/api/users/<id>` | admin | Changer le nom et/ou réinitialiser le mot de passe d'un `user` |
+| DELETE | `/api/users/<id>` | admin | Suppression d'un compte `user` et de ses analyses |
+| DELETE | `/api/users/<id>/analyses/<id>` | admin | Suppression d'une analyse d'un `user`, sans pouvoir la lire |
+
+Les `<id>` des comptes et des analyses sont des UUID. Un compte admin ne se gère jamais par `/api/users/<id>` (`403`) :
+il modifie son propre compte par `/api/auth/me`.
+
+Tentatives limitées par IP : 5 échecs de connexion en 15 minutes, 5 inscriptions par heure ; au-delà, `429`.
 
 Entrées et sorties détaillées : documentation technique, §5.
 
@@ -160,11 +181,12 @@ cd ../frontend && npm run lint
 ```
 
 - **Unitaires** : `LogParser`, `Detector`, `Database`, `GeoLocator`.
-- **Intégration** : les 8 routes avec le client de test Flask et une base temporaire.
+- **Intégration** : les 16 routes avec le client de test Flask et une base temporaire, dont la séparation des comptes
+  (un compte reçoit 404 sur l'analyse d'un autre) et les droits de l'administrateur (403 pour un simple compte).
 - **Manuels** : collection Postman (`docs/testing/`) et checklist de bout en bout (13 scénarios), rejouée dans un vrai navigateur.
 - **Robustesse** : dataset OpenSSH de [Loghub](https://github.com/logpai/loghub) (655 146 lignes).
 
-Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 97 tests, couverture de `sentinel` à 100 %,
+Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 171 tests, couverture de `sentinel` à 100 %,
 fichier de 45 Mo analysé en 1,7 s par l'API.
 
 ## Déploiement (production)
@@ -177,18 +199,22 @@ gunicorn -b 127.0.0.1:8000 app:app            # application complète sur http:/
 ```
 
 Flask sert le front construit et renvoie `index.html` pour toute adresse hors `/api`. La `SECRET_KEY` est lue
-dans `.env` (jamais commité). L'application écoute uniquement en local : une mise en ligne demanderait un serveur,
-Nginx et HTTPS (hors périmètre du MVP).
+dans `.env` (jamais commité). Pour l'instant, le site écoute seulement en local ; sa mise en ligne (serveur, Nginx,
+HTTPS) n'est pas encore prévue.
 
 ## Sécurité et RGPD
 
 - Requêtes SQL paramétrées (injection SQL) ; affichage échappé par React, jamais `dangerouslySetInnerHTML` (XSS).
-- Mots de passe hachés (Werkzeug) ; cookie de session HttpOnly et SameSite=Lax ; même message d'erreur que le nom ou le mot de passe soit faux.
+- Mots de passe hachés (Werkzeug), de 12 à 128 caractères (au-delà, refusé avant d'être haché) ; noms uniques sans tenir compte des majuscules ; cookie de session HttpOnly et SameSite=Lax ; même message d'erreur que le nom ou le mot de passe soit faux.
+- Chaque requête sur une analyse filtre sur le compte connecté (`WHERE user_id = ?`) : deviner l'id d'une autre analyse renvoie 404.
+- Le compte est relu dans la base à chaque requête : un compte supprimé perd l'accès immédiatement. L'inscription crée toujours un `user` ; un administrateur ne se crée qu'avec `flask create-admin`.
+- Force brute freinée : 5 échecs de connexion en 15 minutes ou 5 inscriptions par heure depuis une IP, puis `429`.
 - Fichiers limités à 50 Mo, extension vérifiée, contenu gardé en mémoire et jamais écrit sur le disque (pas de fichier temporaire, voir D17).
 - Aucune commande système exécutée : l'application n'a pas besoin des droits root.
 - Une adresse IP est une donnée personnelle : seules les IP suspectes sont conservées, une analyse peut être
   supprimée, et la page Confidentialité informe sur les données traitées. Les analyses de plus de 30 jours sont
-  supprimées automatiquement au démarrage de l'application (décision D11).
+  supprimées automatiquement au démarrage du site (décision D11). Aucune adresse e-mail n'est demandée ;
+  l'administrateur voit les comptes, pas leurs analyses.
 
 ## Organisation du projet
 
@@ -201,7 +227,11 @@ Nginx et HTTPS (hors périmètre du MVP).
 
 ## Limites et évolutions
 
-- Deux formats de date lus : syslog classique (`Oct 12 14:03:21`, sans année : le passage du Nouvel An est repéré quand le mois recule, D18) et ISO 8601 d'Ubuntu 23.10 et plus (`2026-10-25T17:17:03.249675+01:00`) ; pas de lecture de journald.
-- Analyse à la demande, pas en temps réel ; un seul compte administrateur.
+- Deux formats de date lus : syslog classique (`Oct 12 14:03:21`, sans année : le passage du Nouvel An est repéré quand le mois recule, D18) et ISO 8601 d'Ubuntu 23.10 et plus (`2026-10-25T17:17:03.249675+01:00`)  ; le journal systemd se lit une fois exporté en texte (`journalctl -u ssh -u sshd --no-pager > ssh.log`). Journaux d'OpenSSH pour Windows non pris en charge (autre format).
+- Analyse à la demande, pas en temps réel.
+- Compteurs de tentatives en mémoire : remis à zéro au redémarrage, un par processus Gunicorn. Avant une mise en ligne :
+  HTTPS (`SESSION_COOKIE_SECURE`), et derrière Nginx, lire la vraie IP du visiteur (`ProxyFix`), sinon toutes les
+  requêtes semblent venir de Nginx.
+- Pas de durée maximale pour un compte inactif : il est gardé jusqu'à sa suppression (par son propriétaire ou par l'admin).
 - Géolocalisation approximative (base gratuite) : souvent la ville de l'opérateur, pas l'adresse exacte de l'attaquant.
-- Pistes : plusieurs comptes et rôles, audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.
+- Pistes : mise en ligne (HTTPS, Nginx), audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.

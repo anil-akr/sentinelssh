@@ -35,17 +35,23 @@ export default function HistoryTable({ analyses, onDelete }) {
         <tbody>
           {analyses.map((analysis) => (
             <tr key={analysis.id}>
-              <td>{formatDate(analysis.created_at)}</td>
-              <td>{analysis.filename}</td>
-              <td>{analysis.suspect_count}</td>
-              <td>{analysis.critical_count}</td>
-              <td>
+              {/* data-label : nom de la colonne, affiché devant la valeur sur
+                  téléphone, où chaque ligne devient une petite fiche. */}
+              <td data-label="Date">{formatDate(analysis.created_at)}</td>
+              <td data-label="Fichier" className="file-name">{analysis.filename}</td>
+              <td data-label="IP suspectes">{analysis.suspect_count}</td>
+              <td data-label="Critiques">{analysis.critical_count}</td>
+              <td data-label="Actions">
                 {/* div : un <td> en flex casserait l'alignement du tableau. */}
                 <div className="actions">
-                  <Link to={`/analyses/${analysis.id}`}>Voir</Link>
+                  {/* Mêmes petites tailles : au survol, les deux boutons se
+                      remplissent à la même hauteur. */}
+                  <Link to={`/analyses/${analysis.id}`} className="button-link button-link-secondary button-small">
+                    Voir
+                  </Link>
                   <button
                     type="button"
-                    className="button-danger"
+                    className="button-danger button-small"
                     onClick={() => handleDelete(analysis)}
                   >
                     Supprimer

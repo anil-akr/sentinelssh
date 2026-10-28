@@ -1,6 +1,6 @@
 # Rapport de tests
 
-**Version testée :** `develop` (commit `ed46c31`) + front React de la branche `feature/frontend` — **Dates :** 26 et 27/10/2026
+**Version testée :** `develop` (commit `ed46c31`) + front React de la branche `feature/frontend` — **Dates :** 26 au 28/10/2026 (section 9 : site multi-comptes, D20)
 
 ## 1. Tests automatiques
 
@@ -8,16 +8,17 @@ Commandes : `pytest --cov=sentinel` (dans `backend/`), `pycodestyle sentinel app
 
 | Suite | Nombre de tests | Résultat | Lien |
 |---|---|---|---|
-| Unitaires (LogParser 17, Detector 23, Database 13, GeoLocator 8) | 61 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py` |
-| Intégration (8 routes de l'API, dont fichier jamais écrit sur le disque et id trop grand) | 32 | ✅ | `backend/tests/test_api.py` |
-| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 253 instructions, 0 manquée (97 tests au total) |
+| Unitaires (LogParser 20, Detector 24, Database 25, GeoLocator 8, RateLimiter 4) | 81 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py`, `test_limiter.py` |
+| Intégration (16 routes de l'API, dont fichier jamais écrit sur le disque, id qui n'est pas un UUID, séparation des comptes, droits de l'admin, modification du compte, limitation des tentatives) | 90 | ✅ | `backend/tests/test_api.py` |
+| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 305 instructions, 0 manquée (171 tests au total, 28/10) |
 | pycodestyle / ESLint | — | ✅ 0 erreur | |
 
 Les mêmes vérifications tournent dans la CI (`.github/workflows/tests.yml`) : un job `backend` et un job `frontend` (lint + construction).
 
 ## 2. Tests manuels de l'API (Postman)
 
-Collection : `docs/testing/sentinelssh.postman_collection.json` (21 requêtes, 36 vérifications automatiques).
+Collection : `docs/testing/sentinelssh.postman_collection.json` (40 requêtes depuis D21, 36 après D20 ; 21 requêtes et 36 vérifications avant).
+Les 15 requêtes ajoutées le 28/10 (inscription, séparation des comptes, suppression de son compte, gestion des comptes) ont été rejouées avec `curl` sur une base temporaire (section 9) ; le passage complet avec newman reste à refaire.
 Exécutée le 27/10/2026 avec newman (Postman en ligne de commande) sur une base temporaire : **21 requêtes, 36 vérifications, 0 échec**.
 
 Pour la rejouer dans Postman : importer le fichier, mettre le mot de passe administrateur dans la variable `password`, lancer Flask, puis « Run collection ». Les requêtes d'envoi demandent de choisir le fichier dans l'onglet Body (`demo/demo.log`, un petit `.exe`, un fichier de plus de 50 Mo, D17).
@@ -150,3 +151,41 @@ Tout le projet revu (code, documentation, configuration) puis retesté, après l
 | Historique Git : `.env`, `.db`, `.mmdb`, `node_modules`, clé secrète | ✅ jamais commités |
 | Fichiers de démo de plusieurs tailles (`demo/make_demo_files.sh`, découpés dans Loghub) envoyés à l'API | ✅ 0,2 Mo : 9 IP en 0,02 s ; 1 Mo : 12 IP en 0,05 s ; 11 Mo : 61 IP en 0,43 s ; 45 Mo : 370 IP (2 critiques) en 1,72 s ; 70 Mo : 413 en 0,001 s |
 | Après D18 et la nouvelle liste des pays : pytest, pycodestyle, ESLint, build, `format.js` (10 cas : Nouvel An, ancien format, jours), navigateur (régression 21/21, zoom 10/10, débordements 21/21, présentation 17/17, liste des pays 10 → 20 → 30 → 39 → « Réduire ») | ✅ 97 tests, 100 % ; 0 erreur ; ancienne analyse (dates sans année) toujours affichée |
+| Adresses (D19) : 15 parcours dans le navigateur : `/` = présentation déconnecté et connecté, sans redirection ; `/presentation` et adresse inconnue → `/` ; `/analyse` et `/analyses/1` sans session → `/login` ; connexion → `/analyse` ; logo → `/` ; « Analyser un journal » → `/analyse` ; envoi → détail ; « Retour à mes analyses » → `/analyse` ; rechargement direct de `/analyse` (Flask renvoie `index.html`) ; déconnexion. Puis régression 21/21, zoom 10/10, débordements 21/21, présentation 17/17 | ✅ 0 échec, 0 erreur JavaScript |
+| Listes longues (28/10) : historique et récidivistes de même hauteur, carte et liste des pays de même hauteur (13 largeurs, de 320 à 1440 px) ; aucune zone avec du contenu caché à l'horizontale ; titres collés pendant le défilement ; fiches sur téléphone ; aides « coordonnées » et « AS », phrase d'explication du graphique ; rythme par minute / heure / jour | ✅ 65 + 29 + 10 vérifications ; régression 21/21, adresses 15/15, zoom 10/10, débordements 21/21, présentation 17/17 ; 0 erreur JavaScript |
+
+## 9. Site multi-comptes (28/10/2026, D20)
+
+Passage d'un administrateur unique à un site avec inscription : table `roles`, `users.role_id`, `analyses.user_id`, 4 routes ajoutées (inscription, suppression de son compte, liste et suppression des comptes par l'admin), limitation des tentatives. Une revue de code a suivi ; ses corrections sont incluses.
+
+| Vérification | Résultat |
+|---|---|
+| pytest (146 tests) + couverture ; pycodestyle ; ESLint ; build | ✅ 146 réussis, 100 % (298 instructions) ; 0 erreur |
+| Séparation des comptes : un compte demande l'analyse d'un autre (GET et DELETE), la liste, les récidivistes | ✅ 404 « Analyse introuvable » (on ne révèle pas qu'elle existe) ; liste vide ; récidivistes calculés par compte |
+| Droits : un `user` appelle `GET /api/users` et `DELETE /api/users/<id>` ; un champ `"role": "admin"` envoyé à l'inscription | ✅ 403 « Accès réservé à l'administrateur » ; ignoré, le compte est `user` |
+| Admin : liste des comptes ; suppression d'un `user` (avec analyses), d'un autre admin, de soi-même, d'un id inconnu ou trop grand | ✅ pas de hachage dans la liste ; 204 puis cascade ; 400 ; 400 ; 404 |
+| Compte supprimé alors que sa session est ouverte | ✅ 401 à la requête suivante (`login_required` relit le compte) |
+| Inscription : nom pris, même nom en majuscules (`Alice` / `alice`), nom invalide (court, long, espace, `<script>`, accent), mot de passe court, mot de passe de plus de 128 caractères | ✅ 409 ; 409 (`COLLATE NOCASE`) ; 400 ; 400 ; 400 sans hachage (déni de service évité) |
+| Suppression de son compte : sans mot de passe, mauvais, de mauvais type ; bon ; admin | ✅ 400 « Mot de passe incorrect » ; 204, session fermée, analyses supprimées ; 400 |
+| Limitation : 5 échecs de connexion puis le bon mot de passe ; 4 échecs, une réussite, 4 échecs ; 6e inscription de la même IP dans l'heure | ✅ 429 ; pas de blocage (compteur remis à zéro) ; 429 |
+| Parcours `curl` sur serveur réel et base temporaire (18 requêtes, ordre de la collection Postman) | ✅ tous les codes attendus |
+| Test `test_upload_too_large_returns_413` : 1 échec isolé (401) signalé par la revue | ⚠️ non reproduit en 39 lancements (30 de `test_api.py`, 9 de la suite complète dont 3 en parallèle) ; à surveiller dans la CI |
+| Navigateur (inscription, page Comptes, bandeau sur téléphone) | ⏳ à faire : navigateur de test indisponible le 28/10 |
+
+Bug trouvé et corrigé pendant ce travail : le tableau du journal des décisions (`docs/decisions.md`) était coupé par un commentaire placé au milieu, D18 et D19 ne s'affichaient plus dans le tableau.
+
+## 10. Profils de compte et UUID (28/10/2026, D21)
+
+Pages « Mon compte » (`/compte`), « Comptes » (`/comptes`, admin) et profil d'un user vu par l'admin (`/comptes/<id>`) ; 4 routes ajoutées ; ids des comptes et des analyses en UUID ; colonne `users.updated_at`.
+
+| Vérification | Résultat |
+|---|---|
+| pytest (171 tests) + couverture ; pycodestyle ; ESLint ; build | ✅ 171 réussis, 100 % (305 instructions) ; 0 erreur |
+| Ids : compte et analyse créés ; adresse avec `1`, un entier géant, `abc` | ✅ UUID version 4 ; GET → 404 « Ressource introuvable » ; DELETE → 405 (seule la route du front reconnaît l'adresse), JSON, rien supprimé |
+| Modifier son compte : nouveau nom ; nom pris (`ADMIN`), invalide ; rien à modifier ; mot de passe sans l'actuel, avec un faux, trop court ; bon changement puis connexion ; 5 faux mots de passe actuels | ✅ 200 et `updated_at` avancé ; 409 ; 400 ; 400 ; 400 « Mot de passe actuel incorrect » ; ancien refusé, nouveau accepté ; 429 |
+| Admin sur un user : profil, renommage + réinitialisation, suppression d'une analyse, de la même à nouveau, par le mauvais compte | ✅ pas de hachage, analyses réduites à id/date/fichier ; connexion avec le nouveau mot de passe ; 204 puis liste vide ; 404 ; 404 et analyse gardée |
+| Admin sur un admin (un autre ou lui-même) : GET, PATCH, DELETE ; compte inconnu | ✅ 403 « Un compte administrateur ne peut pas être géré ici », rien modifié ; 404 |
+| Admin qui lit l'analyse d'un user par `/api/analyses/<id>` | ✅ 404 |
+| User sur les 5 routes admin | ✅ 403 |
+| Parcours `curl` sur serveur réel et base temporaire (14 requêtes) ; adresses `/compte`, `/comptes`, `/comptes/<uuid>` servies par Flask | ✅ tous les codes attendus ; 200 |
+| Navigateur (Mon compte, Comptes, profil d'un user, invite sur la présentation) | ⏳ à faire : navigateur de test indisponible |

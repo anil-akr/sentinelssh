@@ -23,15 +23,9 @@ const LEVELS = [
 ]
 
 // Légende des gravités : explique les couleurs du tableau et de la carte.
-// compact : une seule colonne, pour une case étroite (accueil).
-export default function SeverityLegend({ compact = false }) {
-  let className = 'legend'
-  if (compact) {
-    className = 'legend legend-compact'
-  }
-
+export default function SeverityLegend() {
   return (
-    <ul className={className}>
+    <ul className="legend">
       {LEVELS.map((level) => (
         <li key={level.severity} className={`legend-item legend-${level.severity}`}>
           <SeverityBadge severity={level.severity} />
@@ -43,10 +37,6 @@ export default function SeverityLegend({ compact = false }) {
           </details>
         </li>
       ))}
-      <li className="legend-note muted">
-        Ces seuils sont réglables dans <code>backend/sentinel/config.py</code> et ont été
-        vérifiés sur les fichiers de test.
-      </li>
     </ul>
   )
 }

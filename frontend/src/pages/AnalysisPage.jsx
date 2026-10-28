@@ -24,7 +24,7 @@ export default function AnalysisPage() {
 
   return (
     <main className="page">
-      <Link to="/" className="back-link">← Retour à l'accueil</Link>
+      <Link to="/analyse" className="back-link">← Retour à mes analyses</Link>
 
       {loading && <p>Chargement…</p>}
       {error && <p className="error" role="alert">{error}</p>}
@@ -56,7 +56,7 @@ export default function AnalysisPage() {
                     <a href="https://db-ip.com" target="_blank" rel="noreferrer">IP Geolocation by DB-IP</a>
                   </p>
                 </section>
-                <section className="card">
+                <section className="card card-fill">
                   <h2>Pays d'origine</h2>
                   <p className="muted section-help">
                     Classés par nombre d'échecs. La barre montre la part de chaque pays
@@ -68,7 +68,10 @@ export default function AnalysisPage() {
 
               <section className="card">
                 <h2>Top 10 des IP par nombre d'échecs</h2>
-                <p className="muted section-help">Couleur de la barre : gravité de l'IP.</p>
+                <p className="muted section-help">
+                  Les 10 IP qui ont le plus échoué à se connecter. Plus la barre est longue,
+                  plus l'IP a échoué ; sa couleur indique sa gravité.
+                </p>
                 <TopIpsChart suspects={analysis.suspects} />
               </section>
 
@@ -88,7 +91,9 @@ export default function AnalysisPage() {
                   « Comptes visés » : les noms d'utilisateur que l'IP a essayés pour se
                   connecter (les 3 plus fréquents).
                 </p>
-                <SuspectsTable suspects={analysis.suspects} />
+                <div className="scroll-list">
+                  <SuspectsTable suspects={analysis.suspects} />
+                </div>
               </section>
             </>
           )}

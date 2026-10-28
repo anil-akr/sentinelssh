@@ -33,15 +33,17 @@ export default function SuspectsTable({ suspects }) {
               // Fragment : deux <tr> par IP sans élément autour (interdit dans <tbody>).
               <Fragment key={s.ip}>
                 <tr className={`row-${s.severity}${isOpen ? ' row-open' : ''}`}>
-                  <td className="mono">{s.ip}</td>
-                  <td><SeverityBadge severity={s.severity} /></td>
-                  <td>{s.failures}</td>
+                  {/* data-label : nom de la colonne, affiché devant la valeur
+                      sur téléphone, où chaque ligne devient une petite fiche. */}
+                  <td className="mono" data-label="IP">{s.ip}</td>
+                  <td data-label="Gravité"><SeverityBadge severity={s.severity} /></td>
+                  <td data-label="Échecs">{s.failures}</td>
                   {/* Durée de la première à la dernière tentative de cette IP. */}
-                  <td>{formatDuration(attackSeconds(s.first_seen, s.last_seen))}</td>
-                  <td>{s.geo && s.geo.country_code ? countryName(s.geo) : <span className="muted">—</span>}</td>
-                  <td>{s.rules.join(', ')}</td>
-                  <td>{s.users.join(', ')}</td>
-                  <td>
+                  <td data-label="Durée">{formatDuration(attackSeconds(s.first_seen, s.last_seen))}</td>
+                  <td data-label="Origine">{s.geo && s.geo.country_code ? countryName(s.geo) : <span className="muted">—</span>}</td>
+                  <td data-label="Règles">{s.rules.join(', ')}</td>
+                  <td data-label="Comptes visés">{s.users.join(', ')}</td>
+                  <td data-label="Fiche">
                     <button
                       type="button"
                       className="button-secondary button-small"

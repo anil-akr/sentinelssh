@@ -34,7 +34,6 @@ class LogParser:
 
     def parse_line(self, line):
         """Renvoie l'Event lu dans la ligne, ou None si elle ne compte pas."""
-
         match = self._FAILED.search(line)
         if match:
             kind = "fail"
