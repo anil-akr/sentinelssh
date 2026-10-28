@@ -1,4 +1,8 @@
-"""Configuration de SentinelSSH : seuils des règles, base, envoi, secret."""
+"""Configuration de SentinelSSH : seuils des règles, base, envoi, secrets.
+
+Les réglages propres à chaque machine (secrets, durée de session,
+origines CORS, clé de la base) sont lus dans backend/.env.
+"""
 
 import os
 from pathlib import Path
@@ -28,8 +32,13 @@ FAST_WINDOW = 60
 # connexion réussie pour signaler un compte peut-être compromis.
 COMPROMISE_THRESHOLD = 5
 
-# Fichier SQLite (jamais commité : il contient des IP).
-DB_PATH = str(BACKEND_DIR / "sentinel.db")
+# Fichier SQLite chiffré (jamais commité : il contient des IP). Les tests
+# le remplacent par une base jetable (variable DB_PATH).
+DB_PATH = os.environ.get("DB_PATH", str(BACKEND_DIR / "sentinel.db"))
+
+# Fichier qui contient la clé de chiffrement de la base (D22), rangé hors
+# du dépôt : la base copiée seule reste illisible.
+DB_KEY_FILE = os.environ.get("DB_KEY_FILE")
 
 # Fichier envoyé : 50 Mo maximum (D17), extensions acceptées.
 MAX_UPLOAD_MB = 50
@@ -65,3 +74,13 @@ GEO_ASN_DB = BACKEND_DIR / "data" / "dbip-asn-lite.mmdb"
 
 # Clé qui signe le cookie de session. Lue dans .env, jamais dans le code.
 SECRET_KEY = os.environ.get("SECRET_KEY")
+
+# Session (D22) : refusée après ce nombre de minutes sans requête.
+SESSION_LIFETIME_MINUTES = int(os.environ.get("SESSION_LIFETIME_MINUTES",
+                                              "60"))
+
+# Origines (front sur un autre domaine ou port) autorisées à appeler l'API
+# avec le cookie, séparées par des virgules. Vide : aucune.
+CORS_ORIGINS = [origin.strip()
+                for origin in os.environ.get("CORS_ORIGINS", "").split(",")
+                if origin.strip()]

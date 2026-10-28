@@ -1,12 +1,14 @@
 """Tests unitaires de Database (sur une base jetable)."""
 
-import sqlite3
 import uuid
 from contextlib import closing
 
 import pytest
+import sqlcipher3
 
+from sentinel.database import Database
 from sentinel.models import SuspectIP
+from tests.conftest import TEST_DB_KEY
 
 # UUID bien formé qui n'existe dans aucune table.
 UNKNOWN_ID = "00000000-0000-4000-8000-000000000000"
@@ -115,7 +117,7 @@ def test_delete_older_than(db, user_id):
 
 
 def test_severity_check_constraint(db, user_id):
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(sqlcipher3.IntegrityError):
         db.save_analysis(user_id, "x.log", 1, 0,
                          [suspect(severity="inconnue")])
 
@@ -158,25 +160,25 @@ def test_update_username_and_password(db, user_id):
 
 def test_update_username_already_taken(db, user_id):
     db.create_user("bob", "hachage")
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(sqlcipher3.IntegrityError):
         db.update_username(user_id, "BOB")
 
 
 def test_unknown_role_is_refused(db):
     # La sous-requête ne trouve pas le rôle : role_id NULL, refusé.
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(sqlcipher3.IntegrityError):
         db.create_user("bob", "hachage", role="superadmin")
 
 
 def test_username_is_unique(db):
     db.create_user("bob", "hachage")
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(sqlcipher3.IntegrityError):
         db.create_user("bob", "autre")
 
 
 def test_username_is_unique_whatever_the_case(db):
     db.create_user("bob", "hachage")
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(sqlcipher3.IntegrityError):
         db.create_user("BOB", "autre")
 
 
@@ -225,3 +227,29 @@ def test_delete_user_cascades_to_analyses_and_ips(db, user_id):
 
 def test_delete_unknown_user_returns_false(db):
     assert db.delete_user(UNKNOWN_ID) is False
+
+
+# --- Chiffrement (D22) ---------------------------------------------------
+
+def test_file_is_encrypted(db):
+    db.create_user("nom-tres-secret", "hachage")
+    content = open(db.db_path, "rb").read()
+    # Ni l'en-tête de SQLite, ni le nom du compte en clair.
+    assert not content.startswith(b"SQLite format 3")
+    assert b"nom-tres-secret" not in content
+
+
+def test_wrong_key_cannot_read(db):
+    other_key = "f" * 64
+    assert other_key != TEST_DB_KEY
+    with pytest.raises(sqlcipher3.DatabaseError):
+        Database(db.db_path, other_key).get_user("alice")
+
+
+@pytest.mark.parametrize("key", ["", "abc", "0" * 63, "G" * 64,
+                                 "0" * 60 + "'; --"])
+def test_badly_formed_key_is_refused(tmp_path, key):
+    # Seuls 64 caractères 0-9a-f passent : rien d'autre ne peut finir
+    # dans la commande PRAGMA key.
+    with pytest.raises(ValueError):
+        Database(str(tmp_path / "x.db"), key)

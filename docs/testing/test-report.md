@@ -189,3 +189,18 @@ Pages « Mon compte » (`/compte`), « Comptes » (`/comptes`, admin) et profil 
 | User sur les 5 routes admin | ✅ 403 |
 | Parcours `curl` sur serveur réel et base temporaire (14 requêtes) ; adresses `/compte`, `/comptes`, `/comptes/<uuid>` servies par Flask | ✅ tous les codes attendus ; 200 |
 | Navigateur (Mon compte, Comptes, profil d'un user, invite sur la présentation) | ⏳ à faire : navigateur de test indisponible |
+
+## 11. Session, CORS et base chiffrée (28/10/2026, D22)
+
+La session Flask est gardée (pas de JWT) avec une durée de vie et une révocation ; CORS par liste blanche ; base chiffrée par SQLCipher.
+
+| Vérification | Résultat |
+|---|---|
+| pytest (186 tests) + couverture ; pycodestyle | ✅ 186 réussis, 100 % (314 instructions) ; 0 erreur |
+| Fichier de la base : en-tête, nom de compte cherché dans les octets | ✅ pas d'en-tête « SQLite format 3 », nom introuvable |
+| Ouverture avec une autre clé ; clés mal formées (vide, 3 caractères, 63, `G`, guillemet et `--`) | ✅ `DatabaseError` ; `ValueError` avant toute requête |
+| Démarrage sans fichier de clé ; avec l'ancienne base non chiffrée ; base neuve | ✅ refusé (« Clé de la base introuvable ») ; refusé (« Base illisible… ») ; 16 routes `/api` |
+| Cookie après connexion | ✅ `Expires`, `HttpOnly`, `SameSite=Lax` |
+| Session plus vieille que sa durée de vie | ✅ 401 |
+| Admin qui réinitialise le mot de passe d'alice ; alice qui change elle-même le sien | ✅ session d'alice refusée (401) ; session gardée (200) |
+| Requête avec `Origin: http://localhost:5173` ; avec une autre origine | ✅ `Access-Control-Allow-Origin` + `Allow-Credentials: true` ; aucun en-tête CORS |

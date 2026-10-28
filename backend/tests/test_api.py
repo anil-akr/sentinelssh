@@ -2,12 +2,13 @@
 
 import io
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from werkzeug import formparser
 
-from app import app as flask_app, block_command
+from app import app as flask_app, block_command, read_db_key
 from sentinel import config
 from tests.conftest import ADMIN_PASSWORD, USER_PASSWORD
 
@@ -575,3 +576,57 @@ def test_create_admin_command(db):
                        input="un-long-mot-de-passe\nun-long-mot-de-passe\n")
     assert "Compte administrateur créé" in ok.output
     assert db.get_user("chef")["role"] == "admin"
+
+
+# --- Session, CORS et clé de la base (D22) -------------------------------
+
+def test_session_cookie_expires(client):
+    response = client.post("/api/auth/login", json={
+        "username": "alice", "password": USER_PASSWORD})
+    cookie = response.headers["Set-Cookie"]
+    assert "Expires=" in cookie and "HttpOnly" in cookie
+    assert "SameSite=Lax" in cookie
+
+
+def test_expired_session_returns_401(logged_client, monkeypatch):
+    # Durée de vie négative : le cookie est déjà trop vieux pour Flask.
+    monkeypatch.setitem(flask_app.config, "PERMANENT_SESSION_LIFETIME",
+                        timedelta(seconds=-1))
+    assert logged_client.get("/api/auth/me").status_code == 401
+
+
+def test_admin_password_reset_closes_user_session(logged_client,
+                                                  alice_client):
+    assert alice_client.get("/api/auth/me").status_code == 200
+    logged_client.patch(f"/api/users/{alice_id(logged_client)}",
+                        json={"password": "nouveau-mot-de-passe"})
+    assert alice_client.get("/api/auth/me").status_code == 401
+
+
+def test_own_password_change_keeps_session(alice_client):
+    response = alice_client.patch("/api/auth/me", json={
+        "password": "nouveau-mot-de-passe",
+        "current_password": USER_PASSWORD})
+    assert response.status_code == 200
+    assert alice_client.get("/api/auth/me").status_code == 200
+
+
+def test_cors_allows_listed_origin_with_cookie(client):
+    response = client.get("/api/auth/me",
+                          headers={"Origin": "http://localhost:5173"})
+    headers = response.headers
+    assert headers["Access-Control-Allow-Origin"] == "http://localhost:5173"
+    assert headers["Access-Control-Allow-Credentials"] == "true"
+
+
+def test_cors_ignores_other_origin(client):
+    response = client.get("/api/auth/me",
+                          headers={"Origin": "https://pirate.example"})
+    assert "Access-Control-Allow-Origin" not in response.headers
+
+
+@pytest.mark.parametrize("key_file", [None, "/chemin/qui/n/existe/pas"])
+def test_missing_db_key_stops_the_app(monkeypatch, key_file):
+    monkeypatch.setattr(config, "DB_KEY_FILE", key_file)
+    with pytest.raises(RuntimeError):
+        read_db_key()

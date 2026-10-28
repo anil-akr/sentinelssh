@@ -57,7 +57,7 @@ Schéma : [docs/diagrammes.md](docs/diagrammes.md#architecture) (diagrammes en M
 - **Cœur d'analyse** : `LogParser` (lecture) et `Detector` (règles), en Python pur, sans dépendance au web ni à la base.
 - **Géolocalisation** : `GeoLocator` lit les bases locales DB-IP (`backend/data/*.mmdb`) ; la position est calculée à
   chaque lecture d'une analyse, jamais stockée (décision D14).
-- **Données** : `Database` (requêtes SQL paramétrées) et SQLite (4 tables).
+- **Données** : `Database` (requêtes SQL paramétrées) et SQLite chiffrée par SQLCipher (4 tables).
 
 [Diagramme de classes](docs/diagrammes.md#classes-du-back-end) · diagrammes de séquence :
 [connexion](docs/diagrammes.md#séquence--inscription-et-connexion), [analyse](docs/diagrammes.md#séquence--analyse-dun-fichier),
@@ -81,7 +81,7 @@ Diagramme et cardinalités : [docs/diagrammes.md](docs/diagrammes.md#base-de-don
 |---|---|
 | Front-end | React, Vite, React Router, Recharts, d3-geo + world-atlas (carte), polices IBM Plex |
 | Back-end | Python 3, Flask, Werkzeug (hachage), python-dotenv, maxminddb (lecture des bases DB-IP) |
-| Base de données | SQLite (module `sqlite3`) |
+| Base de données | SQLite chiffrée par SQLCipher (module `sqlcipher3`) |
 | Production | Gunicorn |
 | Qualité | pytest, pytest-cov, pycodestyle, ESLint, GitHub Actions, Postman |
 
@@ -101,6 +101,9 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env               # puis remplacer SECRET_KEY (voir le fichier)
+mkdir -p ~/.config/sentinelssh     # clé de la base, HORS du dépôt (D22)
+python3 -c "import secrets; print(secrets.token_hex(32))" > ~/.config/sentinelssh/db.key
+chmod 600 ~/.config/sentinelssh/db.key
 ./scripts/download_geodb.sh        # bases de géolocalisation DB-IP (une fois par mois)
 flask --app app create-admin       # premier administrateur, une seule fois
 flask --app app run                # API sur http://127.0.0.1:5000
@@ -198,16 +201,18 @@ flask --app app create-admin                  # si le compte n'existe pas
 gunicorn -b 127.0.0.1:8000 app:app            # application complète sur http://127.0.0.1:8000
 ```
 
-Flask sert le front construit et renvoie `index.html` pour toute adresse hors `/api`. La `SECRET_KEY` est lue
-dans `.env` (jamais commité). Pour l'instant, le site écoute seulement en local ; sa mise en ligne (serveur, Nginx,
+Flask sert le front construit et renvoie `index.html` pour toute adresse hors `/api`. La `SECRET_KEY`, la durée de la session et
+les origines CORS sont lues dans `.env` (jamais commité) ; la clé de la base, dans le fichier `DB_KEY_FILE`, hors du dépôt. Pour l'instant, le site écoute seulement en local ; sa mise en ligne (serveur, Nginx,
 HTTPS) n'est pas encore prévue.
 
 ## Sécurité et RGPD
 
 - Requêtes SQL paramétrées (injection SQL) ; affichage échappé par React, jamais `dangerouslySetInnerHTML` (XSS).
-- Mots de passe hachés (Werkzeug), de 12 à 128 caractères (au-delà, refusé avant d'être haché) ; noms uniques sans tenir compte des majuscules ; cookie de session HttpOnly et SameSite=Lax ; même message d'erreur que le nom ou le mot de passe soit faux.
+- Mots de passe hachés (Werkzeug), de 12 à 128 caractères (au-delà, refusé avant d'être haché) ; noms uniques sans tenir compte des majuscules ; cookie de session HttpOnly et SameSite=Lax, valable 60 minutes sans requête et refusé dès que le nom ou le mot de passe change (D22) ; même message d'erreur que le nom ou le mot de passe soit faux.
 - Chaque requête sur une analyse filtre sur le compte connecté (`WHERE user_id = ?`) : deviner l'id d'une autre analyse renvoie 404.
 - Le compte est relu dans la base à chaque requête : un compte supprimé perd l'accès immédiatement. L'inscription crée toujours un `user` ; un administrateur ne se crée qu'avec `flask create-admin`.
+- Base chiffrée par SQLCipher : copié seul, le fichier `sentinel.db` est illisible ; la clé est dans un fichier hors du dépôt que seul l'administrateur du serveur détient. Lui perdu, la base l'est aussi.
+- CORS : seules les origines de `CORS_ORIGINS` peuvent appeler l'API depuis un autre site.
 - Force brute freinée : 5 échecs de connexion en 15 minutes ou 5 inscriptions par heure depuis une IP, puis `429`.
 - Fichiers limités à 50 Mo, extension vérifiée, contenu gardé en mémoire et jamais écrit sur le disque (pas de fichier temporaire, voir D17).
 - Aucune commande système exécutée : l'application n'a pas besoin des droits root.

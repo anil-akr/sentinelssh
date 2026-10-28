@@ -7,18 +7,20 @@ Production    : gunicorn -b 127.0.0.1:8000 app:app
 import ipaddress
 import os
 import re
-import sqlite3
+from datetime import timedelta
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
 
 import click
+import sqlcipher3
 from flask import (Flask, Request, abort, g, jsonify, request,
                    send_from_directory, session)
+from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from sentinel import config
-from sentinel.database import Database
+from sentinel.database import Database, now
 from sentinel.detector import Detector
 from sentinel.geo import GeoLocator
 from sentinel.limiter import RateLimiter
@@ -30,6 +32,24 @@ FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if not config.SECRET_KEY:
     raise RuntimeError("SECRET_KEY manquante : copier .env.example en .env "
                        "puis y mettre une clé (voir le README).")
+
+
+def read_db_key():
+    """Lit la clé de chiffrement de la base dans le fichier DB_KEY_FILE.
+
+    Ce fichier est rangé hors du dépôt (D22) : seul l'administrateur du
+    serveur l'a. Sans lui, le site refuse de démarrer.
+    """
+    if not config.DB_KEY_FILE:
+        raise RuntimeError("DB_KEY_FILE manquant dans .env : chemin du "
+                           "fichier de la clé de la base (voir "
+                           ".env.example).")
+    try:
+        key_file = Path(config.DB_KEY_FILE).expanduser()
+        return key_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        raise RuntimeError("Clé de la base introuvable : "
+                           + config.DB_KEY_FILE) from None
 
 
 class MemoryRequest(Request):
@@ -56,19 +76,34 @@ app.config.update(
     # formulaires d'autres sites (protection CSRF).
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
+    # Session refusée après SESSION_LIFETIME_MINUTES sans requête : Flask
+    # vérifie la date signée dans le cookie (D22).
+    PERMANENT_SESSION_LIFETIME=timedelta(
+        minutes=config.SESSION_LIFETIME_MINUTES),
     DB_PATH=config.DB_PATH,
+    DB_KEY=read_db_key(),
 )
+
+# CORS (D22) : seules les origines de CORS_ORIGINS (.env) peuvent appeler
+# l'API depuis un autre site, cookie compris. Pour toute autre origine,
+# aucun en-tête : le navigateur bloque la réponse.
+CORS(app, resources={r"/api/*": {"origins": config.CORS_ORIGINS}},
+     supports_credentials=True)
 
 
 def get_db():
     """Renvoie l'objet Database (les tests changent DB_PATH)."""
-    return Database(app.config["DB_PATH"])
+    return Database(app.config["DB_PATH"], app.config["DB_KEY"])
 
 
 # Au démarrage : création des tables, puis suppression des analyses de
 # plus de 30 jours (durée de conservation, RGPD).
-get_db().init_db()
-get_db().delete_older_than(config.RETENTION_DAYS)
+try:
+    get_db().init_db()
+    get_db().delete_older_than(config.RETENTION_DAYS)
+except sqlcipher3.DatabaseError:
+    raise RuntimeError("Base illisible : mauvaise clé, ou base non chiffrée "
+                       "d'avant D22 (la supprimer pour la recréer).") from None
 
 # Bases de géolocalisation ouvertes une seule fois, au démarrage.
 geo = GeoLocator(config.GEO_CITY_DB, config.GEO_ASN_DB)
@@ -91,12 +126,19 @@ def login_required(view):
 
     Le compte est relu dans la base à chaque requête et rangé dans g.user :
     un compte supprimé par l'administrateur perd l'accès tout de suite,
-    même si son cookie de session est encore valide.
+    même si son cookie de session est encore valide. Idem si son nom ou
+    son mot de passe a changé depuis l'ouverture de la session.
     """
     @wraps(view)
     def wrapper(*args, **kwargs):
         user_id = session.get("user_id")
         user = get_db().get_user_by_id(user_id) if user_id else None
+        # Nom ou mot de passe changé après l'ouverture de la session (ex.
+        # réinitialisé par l'admin) : la session ne vaut plus (D22). Les
+        # deux dates ont le même format ISO : elles se comparent en texte.
+        if user is not None and session.get("logged_at", "") < \
+                user["updated_at"]:
+            user = None
         if user is None:
             session.clear()
             abort(401)
@@ -196,7 +238,7 @@ def update_account(user, data, require_current_password):
     if username is not None:
         try:
             db.update_username(user["id"], username)
-        except sqlite3.IntegrityError:
+        except sqlcipher3.IntegrityError:
             return error("Ce nom d'utilisateur est déjà pris", 409)
     if password is not None:
         db.update_password_hash(user["id"], generate_password_hash(password))
@@ -236,6 +278,19 @@ def block_command(ip):
 
 # --- Connexion -----------------------------------------------------------
 
+def open_session(user_id):
+    """Ouvre une session neuve pour ce compte.
+
+    permanent : le cookie a une date d'expiration (D22). logged_at : heure
+    d'ouverture, comparée à updated_at par login_required.
+    """
+    # clear() d'abord : rien ne reste d'une session précédente.
+    session.clear()
+    session.permanent = True
+    session["user_id"] = user_id
+    session["logged_at"] = now()
+
+
 @app.post("/api/auth/login")
 def login():
     """Vérifie le nom et le mot de passe, puis ouvre la session.
@@ -261,9 +316,7 @@ def login():
     # Connexion réussie : les échecs précédents de cette IP sont oubliés.
     login_limiter.reset(ip)
 
-    # session.clear() d'abord : on repart d'une session neuve.
-    session.clear()
-    session["user_id"] = user["id"]
+    open_session(user["id"])
     return jsonify(username=user["username"], role=user["role"])
 
 
@@ -287,13 +340,12 @@ def register():
     try:
         user_id = get_db().create_user(username,
                                        generate_password_hash(password))
-    except sqlite3.IntegrityError:
+    except sqlcipher3.IntegrityError:
         # Contrainte UNIQUE : la base refuse un 2e compte du même nom (sans
         # risque si 2 inscriptions arrivent en même temps).
         return error("Ce nom d'utilisateur est déjà pris", 409)
 
-    session.clear()
-    session["user_id"] = user_id
+    open_session(user_id)
     return jsonify(username=username, role="user"), 201
 
 
@@ -320,6 +372,9 @@ def update_me():
                              require_current_password=True)
     if failure:
         return failure
+    # Ses identifiants ont changé : session rouverte, sinon login_required
+    # la refuserait (logged_at plus ancien que updated_at).
+    open_session(g.user["id"])
     return jsonify(get_db().get_user_by_id(g.user["id"]))
 
 

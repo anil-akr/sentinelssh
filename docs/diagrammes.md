@@ -16,7 +16,7 @@ flowchart TB
     geo["GeoLocator<br/>geo.py + bases DB-IP locales"]
     limiter["RateLimiter<br/>limiter.py, en mémoire"]
     db["Database<br/>database.py"]
-    sqlite[("SQLite<br/>sentinel.db, 4 tables")]
+    sqlite[("SQLite chiffrée (SQLCipher)<br/>sentinel.db, 4 tables")]
 
     nav <-- "requête HTTP (JSON ou fichier + cookie) / réponse JSON" --> api
     api -- "texte du fichier / IP suspectes" --> coeur
@@ -182,7 +182,7 @@ sequenceDiagram
             A-->>R: 401 Identifiants incorrects
         else identifiants justes
             A->>L: reset(IP)
-            A-->>R: 200 + cookie de session (user_id)
+            A-->>R: 200 + cookie de session (user_id, logged_at, expire après 60 min)
             R-->>U: ouvre /analyse
         end
     end

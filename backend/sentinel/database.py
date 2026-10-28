@@ -3,24 +3,36 @@
 Toutes les requêtes sont paramétrées (« ? ») : une valeur venue de
 l'extérieur n'est jamais collée dans le texte SQL (injection SQL).
 
+Le fichier est chiffré par SQLCipher (D22) : sans la clé, il est
+illisible, même copié sur une autre machine.
+
 Chaque méthode qui touche une analyse reçoit le user_id du compte
 connecté et filtre dessus : un compte ne voit jamais les analyses d'un
 autre, même en devinant leur id.
 """
 
-import sqlite3
+import re
 import uuid
 from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import sqlcipher3
+
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
+
+# Clé de la base : 32 octets aléatoires écrits en hexadécimal.
+KEY_PATTERN = r"[0-9a-f]{64}"
 
 
 def now():
-    """Date et heure actuelles, au format ISO 8601 (se trie comme du
-    texte)."""
-    return datetime.now().isoformat(timespec="seconds")
+    """Date et heure actuelles, au format ISO 8601, à la milliseconde.
+
+    Se trie comme du texte. La milliseconde sert à login_required : une
+    session ouverte juste avant un changement de mot de passe (même
+    seconde) doit quand même être refusée (D22).
+    """
+    return datetime.now().isoformat(timespec="milliseconds")
 
 
 def new_id():
@@ -40,15 +52,28 @@ def split_list(value):
 class Database:
     """Lit et écrit les données de SentinelSSH dans un fichier SQLite."""
 
-    def __init__(self, db_path):
-        """Garde le chemin du fichier ; les tests passent une base jetable."""
+    def __init__(self, db_path, key):
+        """Garde le chemin du fichier et la clé de chiffrement.
+
+        La clé est vérifiée tout de suite (64 caractères hexadécimaux) :
+        c'est elle qui permet de l'écrire sans danger dans PRAGMA key.
+        """
+        if not re.fullmatch(KEY_PATTERN, key):
+            raise ValueError("Clé de la base invalide : 64 caractères "
+                             "hexadécimaux attendus (voir .env.example)")
         self.db_path = db_path
+        self.key = key
 
     def connect(self):
-        """Ouvre la base et active les clés étrangères."""
-        conn = sqlite3.connect(self.db_path)
+        """Ouvre la base, donne la clé, puis active les clés étrangères."""
+        conn = sqlcipher3.connect(self.db_path)
+        # PRAGMA n'accepte pas « ? » : la clé est collée dans la commande,
+        # mais elle vient du fichier de l'administrateur (jamais d'un
+        # visiteur) et ne contient que 0-9 et a-f (vérifié dans
+        # __init__). x'…' : clé brute, déjà aléatoire, pas de dérivation.
+        conn.execute("PRAGMA key = \"x'" + self.key + "'\"")
         # Les lignes se lisent comme des dictionnaires : row["ip"].
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = sqlcipher3.Row
         # SQLite désactive les clés étrangères par défaut : sans cette
         # ligne, ON DELETE CASCADE ne ferait rien.
         conn.execute("PRAGMA foreign_keys = ON")
@@ -145,7 +170,7 @@ class Database:
         limit = datetime.now() - timedelta(days=days)
         with closing(self.connect()) as conn:
             cursor = conn.execute("DELETE FROM analyses WHERE created_at < ?",
-                                  (limit.isoformat(timespec="seconds"),))
+                                  (limit.isoformat(timespec="milliseconds"),))
             conn.commit()
         return cursor.rowcount
 
@@ -187,7 +212,7 @@ class Database:
         """Crée un compte et renvoie son id ; on stocke le hachage, jamais
         le mot de passe.
 
-        Lève sqlite3.IntegrityError si le nom est déjà pris (UNIQUE) ou si
+        Lève sqlcipher3.IntegrityError si le nom est déjà pris (UNIQUE) ou si
         le rôle n'existe pas (role_id NULL refusé par NOT NULL).
         """
         created_at = now()
@@ -206,7 +231,7 @@ class Database:
     def update_username(self, user_id, username):
         """Change le nom du compte.
 
-        Lève sqlite3.IntegrityError si le nom est déjà pris (UNIQUE, sans
+        Lève sqlcipher3.IntegrityError si le nom est déjà pris (UNIQUE, sans
         tenir compte des majuscules).
         """
         with closing(self.connect()) as conn:
