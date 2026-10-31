@@ -8,6 +8,15 @@ Rôles (projet individuel, Anil AKER) : PM = chef de projet, SCM = gestion du co
 
 > **Replanifié le 12/10/2026** (décision D12) : les sprints 1 à 4 sont décalés d'une semaine, sans changer leur contenu. Marge du 9 au 12 novembre ; demo day le 13 novembre.
 
+> **Écarts avec ce plan (au 29/10/2026)** : le plan ci-dessous est celui de départ. Depuis, le périmètre a grandi
+> (voir le [journal des décisions](../decisions.md)) :
+> - D20 : site multi-comptes (inscription, rôles `admin` et `user`) au lieu d'un administrateur unique ; l'API compte
+>   16 routes au lieu de 8, le front 9 pages et 25 composants au lieu de 4 et 10 ;
+> - T4.11 (bonus) : la limitation des tentatives de connexion est faite (D20) ; l'export CSV ne l'est pas ;
+> - ajouts hors plan : géolocalisation et carte (D14), page de présentation (D15, D19), nouveau format de date (D16),
+>   profils de compte (D21), sécurité de la session et base chiffrée (D22), audit complet (D23) ;
+> - les tags de fin de sprint (`v0.1.0` à `v0.3.0`) n'ont pas été posés ; `v1.0.0` le sera à la fusion dans `main`.
+
 | Sprint | Dates | Objectif | Points prévus | Jalon |
 |---|---|---|---|---|
 | Sprint 0 — Préparation | 2 → 4 oct. 2026 | Le dépôt, les outils de suivi et l'environnement de travail sont prêts. | — | J3 — 04/10 |

@@ -7,22 +7,26 @@ site web : chacun crée son compte, envoie son journal et retrouve ses propres a
 > Projet de fin d'année — Holberton School Bordeaux (Portfolio Project, Demo Day, titre RNCP niveau 5).
 > Auteur : Anil AKER — [github.com/anil-akr](https://github.com/anil-akr)
 
-<!-- À compléter en fin de projet : badge de la CI, capture d'écran de l'application, lien de la vidéo de démonstration -->
+[![tests](https://github.com/anil-akr/sentinelssh/actions/workflows/tests.yml/badge.svg)](https://github.com/anil-akr/sentinelssh/actions/workflows/tests.yml)
+
+<!-- À compléter : capture d'écran de l'application, lien de la vidéo de démonstration -->
 
 ## Sommaire
 
 1. [Fonctionnalités](#fonctionnalités)
-2. [Architecture](#architecture)
-3. [Base de données](#base-de-données)
-4. [Technologies](#technologies)
-5. [Installation (développement)](#installation-développement)
-6. [Utilisation](#utilisation)
-7. [API](#api)
-8. [Tests](#tests)
-9. [Déploiement (production)](#déploiement-production)
-10. [Sécurité et RGPD](#sécurité-et-rgpd)
-11. [Organisation du projet](#organisation-du-projet)
-12. [Limites et évolutions](#limites-et-évolutions)
+2. [Journal analysé](#journal-analysé)
+3. [Architecture](#architecture)
+4. [Base de données](#base-de-données)
+5. [Technologies](#technologies)
+6. [Installation (développement)](#installation-développement)
+7. [Utilisation](#utilisation)
+8. [API](#api)
+9. [Tests](#tests)
+10. [Déploiement (production)](#déploiement-production)
+11. [Sécurité et RGPD](#sécurité-et-rgpd)
+12. [Organisation du projet](#organisation-du-projet)
+13. [Limites et évolutions](#limites-et-évolutions)
+14. [Documentation](#documentation)
 
 ## Fonctionnalités
 
@@ -31,7 +35,10 @@ site web : chacun crée son compte, envoie son journal et retrouve ses propres a
   suppression du compte. Un rôle **administrateur** gère les comptes `user` (nom, réinitialisation du mot de passe,
   suppression du compte ou d'une analyse à sa demande) sans jamais voir leur mot de passe ni le contenu de leurs
   analyses (D20, D21).
-- **Analyse d'un fichier** `auth.log` (.log ou .txt, 50 Mo maximum) : lecture des tentatives de connexion SSH.
+- **Analyse d'un fichier** `auth.log` (.log ou .txt, 50 Mo maximum, UTF-8 ou UTF-16) : lecture des tentatives de
+  connexion SSH. Un fichier vide, ou sans aucune tentative SSH (autre journal, texte quelconque), est refusé avec un
+  message clair et rien n'est enregistré. L'IP retenue est la dernière de la ligne, celle écrite par sshd : un nom
+  d'utilisateur piégé ne peut pas faire accuser une autre IP (D23).
 - **Détection en 3 règles**, une gravité par règle :
 
   | Règle | Condition | Gravité |
@@ -46,7 +53,38 @@ site web : chacun crée son compte, envoie son journal et retrouve ses propres a
 - **Géolocalisation hors ligne** avec la base DB-IP Lite : aucune IP n'est envoyée à un service extérieur.
 - **Commande de blocage** (`iptables`) prête à copier, avec une aide (où la taper, `sudo`, vérifier, annuler) : l'outil propose, l'utilisateur décide.
 - **Accueil** : vue d'ensemble chiffrée, **historique** des analyses, suppression, liste des **IP récidivistes** (vues dans plusieurs analyses).
-- **Page de présentation** publique (le projet en une page, puis l'inscription ou la connexion), **page Confidentialité**, interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
+- **Page de présentation** publique (le projet en une page, ses 6 mesures de sécurité et ses garanties RGPD, puis l'inscription ou la connexion), **page Confidentialité** (données, sécurité, cookie, droits), interface **responsive** (ordinateur et mobile), **mode terminal** de secours (`cli.py`).
+
+## Journal analysé
+
+SentinelSSH lit le journal des connexions SSH d'un serveur Linux. Une ligne de ce journal est écrite par deux
+programmes :
+
+```
+Oct 26 02:30:05 srv sshd[812]: Failed password for root from 203.0.113.20 port 52214 ssh2
+└──────── rsyslog ────────────┘└──────────────────── sshd (OpenSSH) ────────────────────┘
+```
+
+- **sshd**, le serveur SSH (OpenSSH, paquet `openssh-server`), rédige le message : `Failed password for … from
+  <IP> port <n>` (échec), `Accepted password` ou `Accepted publickey` (réussite).
+- **rsyslog**, le service des journaux, l'écrit dans `/var/log/auth.log` (Ubuntu, Debian) ou `/var/log/secure`
+  (Red Hat, Fedora) et ajoute devant la date, le nom du serveur et le programme (`sshd[812]`). Depuis Ubuntu 23.10,
+  la date est au format ISO (D16).
+
+`LogParser` (`backend/sentinel/parser.py`) est construit sur le format des messages de sshd : deux expressions
+régulières Python (module `re`), qui font la même recherche qu'un `grep`. Il ne regarde pas le nom du programme :
+les lignes `sshd-session[…]` d'OpenSSH 9.8 et plus sont donc lues aussi. Un journal qui ne contient aucun de ces
+messages est refusé.
+
+Pour vérifier un fichier avant de l'envoyer (même nombre de lignes que `LogParser` sur les 8 fichiers de
+`backend/tests/samples/`) :
+
+```bash
+# Plus de 0 : le fichier contient les lignes que LogParser lit (0 : il serait refusé).
+grep -cE "Failed password|Accepted (password|publickey)" auth.log
+# « active » : rsyslog tourne et écrit auth.log ; sinon, exporter le journal systemd avec journalctl.
+systemctl is-active rsyslog
+```
 
 ## Architecture
 
@@ -85,7 +123,7 @@ Diagramme et cardinalités : [docs/diagrammes.md](docs/diagrammes.md#base-de-don
 | Production | Gunicorn |
 | Qualité | pytest, pytest-cov, pycodestyle, ESLint, GitHub Actions, Postman |
 
-Les justifications de chaque choix sont dans la [documentation technique](docs/stages/SentinelSSH_Stage3_Technical_Documentation.pdf) (§7).
+Chaque choix est justifié dans le [journal des décisions](docs/decisions.md) (D1 à D23).
 
 ## Installation (développement)
 
@@ -135,7 +173,7 @@ par un script) :
 | `1-petit.log` | 0,2 Mo | 2 000 | 9 IP (élevées), 5 pays |
 | `2-moyen.log` | 1 Mo | 10 000 | 12 IP (élevées), 6 pays |
 | `3-gros.log` | 11 Mo | 100 000 | 61 IP (58 élevées, 3 moyennes), 22 pays, en 0,4 s |
-| `4-tres-gros.log` | 45 Mo | 420 000 | 370 IP (2 critiques, 341 élevées, 27 moyennes), 39 pays, en 1,7 s |
+| `4-tres-gros.log` | 45 Mo | 420 000 | 370 IP (2 critiques, 341 élevées, 27 moyennes), 39 pays, en 1,5 s |
 | `5-trop-gros.log` | 70 Mo | 655 146 | refusé : « Fichier trop volumineux (50 Mo maximum) » |
 
 Mode terminal, sans interface web :
@@ -154,7 +192,7 @@ Toutes les routes échangent du JSON. Les erreurs ont la forme `{"error": "messa
 | POST | `/api/auth/login` | non | Connexion (`{username, password}`) |
 | POST | `/api/auth/logout` | non | Déconnexion |
 | GET | `/api/auth/me` | oui | Compte connecté et son rôle |
-| PATCH | `/api/auth/me` | oui | Changer son nom (`{username}`) et/ou son mot de passe (`{password, current_password}`) |
+| PATCH | `/api/auth/me` | oui | Changer son nom (`username`) et/ou son mot de passe (`password`), toujours avec le mot de passe actuel (`current_password`) |
 | DELETE | `/api/auth/me` | oui | Suppression de son compte et de ses analyses (`{password}`) ; refusée pour un admin |
 | POST | `/api/analyses` | oui | Envoi d'un fichier (`multipart/form-data`, champ `file`) |
 | GET | `/api/analyses` | oui | Historique des analyses du compte |
@@ -172,7 +210,7 @@ il modifie son propre compte par `/api/auth/me`.
 
 Tentatives limitées par IP : 5 échecs de connexion en 15 minutes, 5 inscriptions par heure ; au-delà, `429`.
 
-Entrées et sorties détaillées : documentation technique, §5.
+Corps, réponses et erreurs de chaque route : [docs/api.md](docs/api.md).
 
 ## Tests
 
@@ -183,14 +221,16 @@ pycodestyle sentinel app.py cli.py tests
 cd ../frontend && npm run lint
 ```
 
-- **Unitaires** : `LogParser`, `Detector`, `Database`, `GeoLocator`.
-- **Intégration** : les 16 routes avec le client de test Flask et une base temporaire, dont la séparation des comptes
-  (un compte reçoit 404 sur l'analyse d'un autre) et les droits de l'administrateur (403 pour un simple compte).
-- **Manuels** : collection Postman (`docs/testing/`) et checklist de bout en bout (13 scénarios), rejouée dans un vrai navigateur.
+- **Unitaires** (97) : `LogParser`, `Detector`, `Database`, `GeoLocator`, `RateLimiter`.
+- **Intégration** (124) : les 16 routes avec le client de test Flask et une base chiffrée temporaire, dont la séparation
+  des comptes (un compte reçoit 404 sur l'analyse d'un autre), les droits de l'administrateur (403 pour un simple compte),
+  la révocation de la session et les fichiers piégés.
+- **Manuels** : collection Postman (`docs/testing/`, rejouée par newman : 40 requêtes, 0 échec) et parcours complets dans
+  un vrai navigateur (inscription, envois, comptes, admin, 5 largeurs d'écran).
 - **Robustesse** : dataset OpenSSH de [Loghub](https://github.com/logpai/loghub) (655 146 lignes).
 
-Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 171 tests, couverture de `sentinel` à 100 %,
-fichier de 45 Mo analysé en 1,7 s par l'API.
+Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 221 tests, couverture de `sentinel` à 100 %,
+fichier de 45 Mo analysé en 1,5 s par l'API.
 
 ## Déploiement (production)
 
@@ -210,20 +250,26 @@ HTTPS) n'est pas encore prévue.
 - Requêtes SQL paramétrées (injection SQL) ; affichage échappé par React, jamais `dangerouslySetInnerHTML` (XSS).
 - Mots de passe hachés (Werkzeug), de 12 à 128 caractères (au-delà, refusé avant d'être haché) ; noms uniques sans tenir compte des majuscules ; cookie de session HttpOnly et SameSite=Lax, valable 60 minutes sans requête et refusé dès que le nom ou le mot de passe change (D22) ; même message d'erreur que le nom ou le mot de passe soit faux.
 - Chaque requête sur une analyse filtre sur le compte connecté (`WHERE user_id = ?`) : deviner l'id d'une autre analyse renvoie 404.
-- Le compte est relu dans la base à chaque requête : un compte supprimé perd l'accès immédiatement. L'inscription crée toujours un `user` ; un administrateur ne se crée qu'avec `flask create-admin`.
+- Le compte est relu dans la base à chaque requête : un compte supprimé perd l'accès immédiatement. L'inscription crée toujours un `user` ; un administrateur ne se crée qu'avec `flask create-admin`. Changer son nom ou son mot de passe, ou supprimer son compte, redemande le mot de passe actuel.
 - Base chiffrée par SQLCipher : copié seul, le fichier `sentinel.db` est illisible ; la clé est dans un fichier hors du dépôt que seul l'administrateur du serveur détient. Lui perdu, la base l'est aussi.
 - CORS : seules les origines de `CORS_ORIGINS` peuvent appeler l'API depuis un autre site.
 - Force brute freinée : 5 échecs de connexion en 15 minutes ou 5 inscriptions par heure depuis une IP, puis `429`.
 - Fichiers limités à 50 Mo, extension vérifiée, contenu gardé en mémoire et jamais écrit sur le disque (pas de fichier temporaire, voir D17).
 - Aucune commande système exécutée : l'application n'a pas besoin des droits root.
 - Une adresse IP est une donnée personnelle : seules les IP suspectes sont conservées, une analyse peut être
-  supprimée, et la page Confidentialité informe sur les données traitées. Les analyses de plus de 30 jours sont
+  supprimée, et la page Confidentialité informe sur les données traitées, les mesures de sécurité (article 32),
+  le cookie et les droits (dont la réclamation à la CNIL). Les analyses de plus de 30 jours sont
   supprimées automatiquement au démarrage du site (décision D11). Aucune adresse e-mail n'est demandée ;
   l'administrateur voit les comptes, pas leurs analyses.
+- Seul cookie : la session, indispensable à la connexion (exemptée de consentement), sans mesure d'audience ni
+  publicité.
+- Pas encore de HTTPS : le site tourne en local ; la mise en ligne se fera derrière HTTPS, et la page Confidentialité
+  le dit.
 
 ## Organisation du projet
 
-- **Branches** : `main` (stable, taguée à chaque fin de sprint), `develop` (intégration), `feature/…` et `fix/…` (une par tâche).
+- **Branches** : `main` (stable, protégée ; recevra `develop` avec le tag `v1.0.0`), `develop` (intégration), `feature/…`
+  et `fix/…` (une par tâche). Schéma : [docs/diagrammes.md](docs/diagrammes.md#branches-git).
 - **Pull Requests** relues avec une checklist, **CI** GitHub Actions à chaque push.
 - **Sprints** d'une semaine : [plan des sprints](docs/sprints/sprint-planning.md), revues et rétrospectives dans `docs/sprints/`.
 - **Suivi** : GitHub Projects (kanban), issues et milestones ; bugs avec le label `bug`.
@@ -234,9 +280,22 @@ HTTPS) n'est pas encore prévue.
 
 - Deux formats de date lus : syslog classique (`Oct 12 14:03:21`, sans année : le passage du Nouvel An est repéré quand le mois recule, D18) et ISO 8601 d'Ubuntu 23.10 et plus (`2026-10-25T17:17:03.249675+01:00`)  ; le journal systemd se lit une fois exporté en texte (`journalctl -u ssh -u sshd --no-pager > ssh.log`). Journaux d'OpenSSH pour Windows non pris en charge (autre format).
 - Analyse à la demande, pas en temps réel.
+- Une ligne « message repeated N times » (rsyslog) compte pour 1 échec, pas N : le nombre d'échecs peut être sous-estimé.
 - Compteurs de tentatives en mémoire : remis à zéro au redémarrage, un par processus Gunicorn. Avant une mise en ligne :
   HTTPS (`SESSION_COOKIE_SECURE`), et derrière Nginx, lire la vraie IP du visiteur (`ProxyFix`), sinon toutes les
   requêtes semblent venir de Nginx.
 - Pas de durée maximale pour un compte inactif : il est gardé jusqu'à sa suppression (par son propriétaire ou par l'admin).
 - Géolocalisation approximative (base gratuite) : souvent la ville de l'opérateur, pas l'adresse exacte de l'attaquant.
 - Pistes : mise en ligne (HTTPS, Nginx), audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.
+
+## Documentation
+
+| Document | Contenu |
+|---|---|
+| [docs/api.md](docs/api.md) | Les 16 routes : corps, réponses, erreurs |
+| [docs/diagrammes.md](docs/diagrammes.md) | Cas d'utilisation, architecture, base, classes, séquences, CI, branches, production (PNG dans `docs/images/`) |
+| [docs/decisions.md](docs/decisions.md) | Journal des décisions D1 à D23, avec les options écartées |
+| [docs/testing/test-report.md](docs/testing/test-report.md) | Rapport de tests et audit complet (§12) |
+| [docs/testing/sentinelssh.postman_collection.json](docs/testing/sentinelssh.postman_collection.json) | Collection Postman |
+| [docs/sprints/sprint-planning.md](docs/sprints/sprint-planning.md) | Plan des sprints |
+| `docs/stages/` | Documents des Stages 1 à 4 et conception complète (PDF). Écrits avant D20 : ils décrivent un administrateur unique et 8 routes ; le code et les documents ci-dessus font foi |

@@ -855,7 +855,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"username\": \"{{newUser}}b\"}"
+              "raw": "{\"username\": \"{{newUser}}b\", \"current_password\": \"un-long-mot-de-passe\"}"
             }
           },
           "description": ""

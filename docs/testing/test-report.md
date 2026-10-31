@@ -1,6 +1,11 @@
 # Rapport de tests
 
-**Version testée :** `develop` (commit `ed46c31`) + front React de la branche `feature/frontend` — **Dates :** 26 au 28/10/2026 (section 9 : site multi-comptes, D20)
+**Version testée :** branche `feature/frontend` (commit `ab96632` et modifications du 29/10) — **Dates :** 26 au 29/10/2026
+
+> **Comment lire ce rapport.** Le §1 et le §12 donnent l'état **actuel** (29/10/2026). Les §2 à §11 sont l'historique
+> des vérifications, dans l'ordre où elles ont été faites : une ligne ancienne peut décrire un comportement changé
+> depuis. Exemples : la limite d'envoi est passée de 5 à 50 Mo (D17), et un fichier vide ou sans journal SSH, accepté
+> avec le verdict « Aucune IP suspecte » au §3, est refusé depuis D23 (§12).
 
 ## 1. Tests automatiques
 
@@ -8,9 +13,9 @@ Commandes : `pytest --cov=sentinel` (dans `backend/`), `pycodestyle sentinel app
 
 | Suite | Nombre de tests | Résultat | Lien |
 |---|---|---|---|
-| Unitaires (LogParser 20, Detector 24, Database 25, GeoLocator 8, RateLimiter 4) | 81 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py`, `test_limiter.py` |
-| Intégration (16 routes de l'API, dont fichier jamais écrit sur le disque, id qui n'est pas un UUID, séparation des comptes, droits de l'admin, modification du compte, limitation des tentatives) | 90 | ✅ | `backend/tests/test_api.py` |
-| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 305 instructions, 0 manquée (171 tests au total, 28/10) |
+| Unitaires (LogParser 27, Detector 26, Database 32, GeoLocator 8, RateLimiter 4) | 97 | ✅ | `backend/tests/test_parser.py`, `test_detector.py`, `test_database.py`, `test_geo.py`, `test_limiter.py` |
+| Intégration (16 routes de l'API, dont fichier jamais écrit sur le disque, id qui n'est pas un UUID, séparation des comptes, droits de l'admin, modification du compte, révocation de la session, CORS, fichiers piégés, limitation des tentatives) | 124 | ✅ | `backend/tests/test_api.py` |
+| Couverture du package `sentinel` | — | ✅ 100 % (objectif ≥ 80 %) | 317 instructions, 0 manquée (221 tests au total, 29/10) |
 | pycodestyle / ESLint | — | ✅ 0 erreur | |
 
 Les mêmes vérifications tournent dans la CI (`.github/workflows/tests.yml`) : un job `backend` et un job `frontend` (lint + construction).
@@ -204,3 +209,33 @@ La session Flask est gardée (pas de JWT) avec une durée de vie et une révocat
 | Session plus vieille que sa durée de vie | ✅ 401 |
 | Admin qui réinitialise le mot de passe d'alice ; alice qui change elle-même le sien | ✅ session d'alice refusée (401) ; session gardée (200) |
 | Requête avec `Origin: http://localhost:5173` ; avec une autre origine | ✅ `Access-Control-Allow-Origin` + `Allow-Credentials: true` ; aucun en-tête CORS |
+| Pages : présentation (section « Sécurité du site », 6 mesures) et Confidentialité (sécurité des données, cookie, CNIL) ; ESLint ; build | ✅ 0 erreur ; chaque mesure annoncée correspond à du code testé ci-dessus ou en §9-10 ; HTTPS annoncé seulement pour la mise en ligne |
+| Navigateur (sections sur ordinateur et téléphone) | ⏳ à faire : navigateur de test indisponible |
+
+## 12. Audit complet (29/10/2026, D23)
+
+Relecture de tout le code, contrôles automatiques, puis sondes sur un vrai serveur (base chiffrée temporaire, port 5077) : fichiers piégés, corps de requête invalides, bornes, droits, parcours complets.
+
+| Vérification | Résultat |
+|---|---|
+| pytest (221 tests) + couverture ; pycodestyle ; ESLint ; build | ✅ 221 réussis, 100 % (317 instructions) ; 0 erreur |
+| **Bug corrigé** : nom d'utilisateur `x from 8.8.8.8 port 22` (usurpation d'IP) | ❌ avant : 8.8.8.8 accusée et commande de blocage pour elle → ✅ 203.0.113.5 (la vraie IP) |
+| **Bug corrigé** : nom avec espace (`admin test`), nom vide, nom avec virgule | ❌ avant : ligne ignorée (attaque invisible) ; virgule coupée en 2 noms → ✅ lus, gardés tels quels |
+| **Bug corrigé** : adresse qui n'est pas une IP (`from not-an-ip`) | ❌ avant : comptée comme IP → ✅ ligne ignorée |
+| **Bug corrigé** : fichier vide, texte quelconque, binaire, journal nginx, journal SSH sans tentative | ❌ avant : 201 et verdict « Rien de suspect » → ✅ 400 « Le fichier est vide » / « Aucune tentative de connexion SSH… », rien d'enregistré |
+| **Bug corrigé** : fichier UTF-16 (PowerShell), UTF-8 avec BOM | ❌ avant : 0 ligne lue ; 1re ligne perdue → ✅ lus en entier |
+| **Bug corrigé** : corps JSON `["a"]`, `"texte"`, `42`, `null` sur login, register, PATCH et DELETE `/api/auth/me` | ❌ avant : 500 → ✅ 400 |
+| **Bug corrigé** : `/assets/absent.js` | ❌ avant : `index.html` avec 200 → ✅ 404 ; une route React (`/comptes/abc`) reste servie |
+| Nom de fichier de plus de 255 caractères ; sans extension ; `x.log.exe` ; `demo.TXT` ; pas de champ `file` ; 51 Mo | ✅ 400 ; 400 ; 400 ; 201 (casse ignorée) ; 400 ; 413 |
+| Bornes des règles : 4 échecs puis réussite (R3) ; 5 échecs en 61 s (R2) | ✅ rien de signalé (tests ajoutés) |
+| Inscription : nom de 2 et 31 caractères, accentué, numérique ; mot de passe de 11 ; champ manquant ; 6e tentative | ✅ 400 ; 429 à partir de la 6e tentative de l'heure |
+| JSON cassé, formulaire au lieu de JSON, route `/api` inconnue, méthode PUT | ✅ 400, 400, 404, 405, toujours en JSON |
+| Parcours complet : 2 users + admin, envois, récidivistes, lecture et suppression croisées, gestion par l'admin, réinitialisation, suppression de compte, déconnexion | ✅ 404 pour l'analyse d'un autre (admin compris) ; 403 pour un user sur `/api/users` et pour l'admin sur un admin ; session coupée après réinitialisation ; 0 erreur 500 dans le journal du serveur |
+| Performance : 50 Mo (500 808 lignes, pire cas : que des échecs) | ✅ lecture 4,6 s (3,9 s avant, coût de la vérification des IP), détection 0,24 s ; vrai journal Loghub de 50 Mo : 1,4 s |
+| Front : titre d'une analyse ; fichier de plus de 50 Mo choisi ; compte visé au nom vide | ✅ nom du fichier et date (plus d'UUID) ; refusé avant l'envoi ; affiché « (nom vide) » |
+| Limite connue : ligne « message repeated N times: [ … ] » de rsyslog | ⚠️ lue comme 1 échec, pas N (sous-estime le nombre) |
+| **Bug corrigé** : renommer son compte sans redonner son mot de passe (session laissée ouverte) | ❌ avant : 200, le propriétaire ne connaît plus son nom de connexion → ✅ « Mot de passe actuel incorrect » (400), essais comptés dans la limite de connexion ; l'admin renomme toujours un user sans mot de passe ; testé dans le navigateur |
+| **Bug corrigé** : `flask create-admin` avec un nom `a b` ou un mot de passe de 200 caractères | ❌ avant : compte admin créé (seule la longueur minimale était vérifiée) → ✅ refusé avec le message de l'inscription (mêmes règles : nom de 3 à 30 caractères, mot de passe de 12 à 128) |
+| Collection Postman rejouée par newman 6.2.1 (serveur Gunicorn, base chiffrée temporaire) | ✅ 40 requêtes, 70 assertions, 0 échec |
+| Page Confidentialité relue phrase par phrase contre le code | ✅ corrigée : IP du visiteur gardée en mémoire par la limitation des tentatives (15 min / 1 h, jamais sur le disque) ; contenu exact du cookie (identifiant + heure de connexion) ; ce sont les **autres** sessions qui sont fermées au changement d'identifiants ; mot de passe actuel redemandé. Aucun stockage dans le navigateur, aucun journal du serveur |
+| Navigateur (Playwright, 29/10) : inscription (nom court, mot de passe court, confirmation différente, `ALICE` déjà pris), envois vide / sans log / UTF-16, analyse d'un autre compte (user et admin), `/comptes` pour un user, renommage, page Comptes et profil d'un user, suppression de son compte, déconnexion ; 7 pages × 5 largeurs (320 à 1440 px) | ✅ 55 vérifications réussies ; message clair pour chaque refus ; « Analyse introuvable » ; « Accès réservé à l'administrateur » ; aucun défilement horizontal ; 0 erreur JavaScript, 0 erreur serveur |
