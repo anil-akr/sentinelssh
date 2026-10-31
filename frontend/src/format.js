@@ -98,3 +98,9 @@ export function formatDate(iso) {
   const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   return `${day} à ${time}`
 }
+
+// Compte visé par une IP. Le nom est choisi par l'attaquant : il peut être
+// vide (« Failed password for invalid user  from … »).
+export function userLabel(user) {
+  return user === '' ? '(nom vide)' : user
+}

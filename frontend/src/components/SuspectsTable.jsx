@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { attackSeconds, countryName, formatDuration } from '../format.js'
+import { attackSeconds, countryName, formatDuration, userLabel } from '../format.js'
 import IpDetails from './IpDetails.jsx'
 import SeverityBadge from './SeverityBadge.jsx'
 
@@ -42,7 +42,7 @@ export default function SuspectsTable({ suspects }) {
                   <td data-label="Durée">{formatDuration(attackSeconds(s.first_seen, s.last_seen))}</td>
                   <td data-label="Origine">{s.geo && s.geo.country_code ? countryName(s.geo) : <span className="muted">—</span>}</td>
                   <td data-label="Règles">{s.rules.join(', ')}</td>
-                  <td data-label="Comptes visés">{s.users.join(', ')}</td>
+                  <td data-label="Comptes visés">{s.users.map(userLabel).join(', ')}</td>
                   <td data-label="Fiche">
                     <button
                       type="button"

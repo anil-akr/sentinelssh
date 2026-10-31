@@ -70,7 +70,7 @@ export default function UserAdminPage() {
           <section className="card">
             <h2>Identifiants</h2>
             <EditableRow label="Nom d'utilisateur" value={account.username}>
-              <UsernameForm currentUsername={account.username} onSave={saveChanges} />
+              <UsernameForm currentUsername={account.username} askCurrent={false} onSave={saveChanges} />
             </EditableRow>
             {/* Réinitialisation : l'admin ne connaît pas l'ancien mot de passe. */}
             <EditableRow

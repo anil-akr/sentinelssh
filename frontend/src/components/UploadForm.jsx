@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { uploadLog } from '../api.js'
 
+// Même limite que le serveur (MAX_UPLOAD_MB) : un fichier trop gros est
+// refusé avant d'être envoyé, sans attendre la réponse 413.
+const MAX_UPLOAD_MB = 50
+
 // Choix du fichier et envoi ; ouvre ensuite la page de détail.
 export default function UploadForm() {
   const [file, setFile] = useState(null)
@@ -15,13 +19,18 @@ export default function UploadForm() {
       setError('Choisissez un fichier.')
       return
     }
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      setError(`Fichier trop volumineux (${MAX_UPLOAD_MB} Mo maximum).`)
+      return
+    }
     setLoading(true)
     setError('')
     try {
       const result = await uploadLog(file)
       navigate(`/analyses/${result.id}`)
     } catch (err) {
-      // Message de l'API : extension refusée, fichier trop volumineux…
+      // Message de l'API : extension refusée, fichier vide ou sans
+      // tentative de connexion SSH…
       setError(err.message)
       setLoading(false)
     }

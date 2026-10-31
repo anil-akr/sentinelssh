@@ -34,7 +34,7 @@ export default function AnalysisPage() {
           <h1>
             {analysis.filename}
             <span className="title-detail">
-              Analyse n°{analysis.id}, faite le{' '}
+              Analyse faite le{' '}
               {new Date(analysis.created_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}
             </span>
           </h1>

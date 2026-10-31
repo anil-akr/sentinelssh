@@ -1,4 +1,4 @@
-import { attackSeconds, countryName, formatDuration, formatLogTime } from '../format.js'
+import { attackSeconds, countryName, formatDuration, formatLogTime, userLabel } from '../format.js'
 import BlockCommandHelp from './BlockCommandHelp.jsx'
 import CopyButton from './CopyButton.jsx'
 
@@ -114,7 +114,7 @@ export default function IpDetails({ suspect }) {
 
       <div className="details-block">
         <h3>Comptes les plus visés</h3>
-        <p>{suspect.users.map((user) => <code key={user} className="chip">{user}</code>)}</p>
+        <p>{suspect.users.map((user) => <code key={user} className="chip">{userLabel(user)}</code>)}</p>
       </div>
 
       <div className="details-block">

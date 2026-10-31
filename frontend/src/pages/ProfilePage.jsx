@@ -64,7 +64,7 @@ export default function ProfilePage() {
       <section className="card">
         <h2>Identifiants</h2>
         <EditableRow label="Nom d'utilisateur" value={account.username}>
-          <UsernameForm currentUsername={account.username} onSave={saveChanges} />
+          <UsernameForm currentUsername={account.username} askCurrent onSave={saveChanges} />
         </EditableRow>
         <EditableRow
           label="Mot de passe"
