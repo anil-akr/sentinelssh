@@ -1,8 +1,8 @@
 # Rapport de tests
 
-**Version testée :** branche `feature/frontend` (commit `ab96632` et modifications du 29/10) — **Dates :** 26 au 29/10/2026
+**Version testée :** branche `feature/frontend` (commit `3042689`) — **Dates :** 26 au 31/10/2026
 
-> **Comment lire ce rapport.** Le §1 et le §12 donnent l'état **actuel** (29/10/2026). Les §2 à §11 sont l'historique
+> **Comment lire ce rapport.** Le §1, le §12 et le §13 donnent l'état **actuel** (31/10/2026). Les §2 à §11 sont l'historique
 > des vérifications, dans l'ordre où elles ont été faites : une ligne ancienne peut décrire un comportement changé
 > depuis. Exemples : la limite d'envoi est passée de 5 à 50 Mo (D17), et un fichier vide ou sans journal SSH, accepté
 > avec le verdict « Aucune IP suspecte » au §3, est refusé depuis D23 (§12).
@@ -23,8 +23,8 @@ Les mêmes vérifications tournent dans la CI (`.github/workflows/tests.yml`) : 
 ## 2. Tests manuels de l'API (Postman)
 
 Collection : `docs/testing/sentinelssh.postman_collection.json` (40 requêtes depuis D21, 36 après D20 ; 21 requêtes et 36 vérifications avant).
-Les 15 requêtes ajoutées le 28/10 (inscription, séparation des comptes, suppression de son compte, gestion des comptes) ont été rejouées avec `curl` sur une base temporaire (section 9) ; le passage complet avec newman reste à refaire.
-Exécutée le 27/10/2026 avec newman (Postman en ligne de commande) sur une base temporaire : **21 requêtes, 36 vérifications, 0 échec**.
+**État actuel** : rejouée par newman le 29/10 et le 31/10/2026 sur un serveur neuf et une base chiffrée temporaire : **40 requêtes, 70 vérifications, 0 échec** (§12, §13).
+Historique : le 27/10, avant D20, **21 requêtes, 36 vérifications, 0 échec** ; le tableau ci-dessous date de ce passage.
 
 Pour la rejouer dans Postman : importer le fichier, mettre le mot de passe administrateur dans la variable `password`, lancer Flask, puis « Run collection ». Les requêtes d'envoi demandent de choisir le fichier dans l'onglet Body (`demo/demo.log`, un petit `.exe`, un fichier de plus de 50 Mo, D17).
 
@@ -210,7 +210,7 @@ La session Flask est gardée (pas de JWT) avec une durée de vie et une révocat
 | Admin qui réinitialise le mot de passe d'alice ; alice qui change elle-même le sien | ✅ session d'alice refusée (401) ; session gardée (200) |
 | Requête avec `Origin: http://localhost:5173` ; avec une autre origine | ✅ `Access-Control-Allow-Origin` + `Allow-Credentials: true` ; aucun en-tête CORS |
 | Pages : présentation (section « Sécurité du site », 6 mesures) et Confidentialité (sécurité des données, cookie, CNIL) ; ESLint ; build | ✅ 0 erreur ; chaque mesure annoncée correspond à du code testé ci-dessus ou en §9-10 ; HTTPS annoncé seulement pour la mise en ligne |
-| Navigateur (sections sur ordinateur et téléphone) | ⏳ à faire : navigateur de test indisponible |
+| Navigateur (sections sur ordinateur et téléphone) | ⏳ à faire : navigateur de test indisponible → fait ensuite (§12, §13) |
 
 ## 12. Audit complet (29/10/2026, D23)
 
@@ -239,3 +239,24 @@ Relecture de tout le code, contrôles automatiques, puis sondes sur un vrai serv
 | Collection Postman rejouée par newman 6.2.1 (serveur Gunicorn, base chiffrée temporaire) | ✅ 40 requêtes, 70 assertions, 0 échec |
 | Page Confidentialité relue phrase par phrase contre le code | ✅ corrigée : IP du visiteur gardée en mémoire par la limitation des tentatives (15 min / 1 h, jamais sur le disque) ; contenu exact du cookie (identifiant + heure de connexion) ; ce sont les **autres** sessions qui sont fermées au changement d'identifiants ; mot de passe actuel redemandé. Aucun stockage dans le navigateur, aucun journal du serveur |
 | Navigateur (Playwright, 29/10) : inscription (nom court, mot de passe court, confirmation différente, `ALICE` déjà pris), envois vide / sans log / UTF-16, analyse d'un autre compte (user et admin), `/comptes` pour un user, renommage, page Comptes et profil d'un user, suppression de son compte, déconnexion ; 7 pages × 5 largeurs (320 à 1440 px) | ✅ 55 vérifications réussies ; message clair pour chaque refus ; « Analyse introuvable » ; « Accès réservé à l'administrateur » ; aucun défilement horizontal ; 0 erreur JavaScript, 0 erreur serveur |
+
+## 13. Audit complet avant la revue (31/10/2026)
+
+Tout revérifié sur le commit `3042689` : tests, relecture du code, vrai serveur (Gunicorn, base chiffrée temporaire, port 8082), navigateur, documentation recoupée avec le code. Aucun bug trouvé.
+
+| Vérification | Résultat |
+|---|---|
+| pytest (221 tests : parser 27, detector 26, database 32, geo 8, limiter 4, API 124) + couverture | ✅ 221 réussis ; `sentinel` 100 % (317 instructions) ; `app.py` 97 % (lignes restantes testées à la main, ci-dessous) ; `cli.py` testé à la main |
+| pycodestyle ; ESLint ; build ; `npm audit --omit=dev` | ✅ 0 erreur ; 0 faille dans les dépendances du front |
+| Relecture de sécurité : SQL paramétré, filtre `user_id`, affichage, commandes système, cookie, fichiers suivis par git | ✅ seule exception au SQL paramétré : `PRAGMA key`, clé vérifiée avant (64 caractères `0-9a-f`) ; lecture et suppression d'une analyse filtrées sur `user_id` ; aucun `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `subprocess` ; cookie HttpOnly + SameSite Lax ; aucune clé, base ni `.env` dans le dépôt |
+| Cas de l'API non couverts par pytest, testés avec `curl` : `PATCH /api/users/<admin>` ; `PATCH /api/users/<inconnu>` ; `DELETE /api/users/<admin>/analyses/<id>` ; `DELETE /api/auth/me` après 5 mots de passe faux | ✅ 403 ; 404 ; 403 ; 429, et le compte existe toujours |
+| Démarrage : sans `SECRET_KEY` ; fichier de clé absent ; clé mal formée ; mauvaise clé | ✅ refusé à chaque fois, avec un message clair |
+| Base chiffrée : début du fichier, texte lisible | ✅ pas d'en-tête « SQLite format 3 » ; aucun nom de compte ni nom de table lisible |
+| Collection Postman (newman 6.2.1) sur un serveur neuf | ✅ 40 requêtes, 70 vérifications, 0 échec |
+| Même collection rejouée une 2e fois sans redémarrer le serveur | ⚠️ 25 échecs, tous dus à 3 réponses 429 sur l'inscription : la limite (5 inscriptions par heure et par IP) est atteinte, la collection en faisant 4. Comportement voulu ; la collection se joue sur un serveur qui vient de démarrer |
+| Navigateur (Playwright) : les 55 contrôles du §12 | ✅ 55/55 (script mis à jour : le renommage demande le mot de passe actuel) |
+| `cli.py` : `demo/demo.log`, `demo/demo-monde.log`, fichier absent | ✅ 3 IP suspectes ; 13 IP suspectes ; « Fichier introuvable ou illisible » |
+| Page d'analyse, aide « Quel fichier envoyer » : la commande `grep` de vérification comparée à `LogParser` sur les 8 mini-journaux de `tests/samples/` | ✅ mêmes nombres de lignes (4, 5, 5, 2, 5, 20, 5, 6) ; les 4 lignes d'exemple donnent bien échec, réussite, ignorée, ignorée |
+| Page d'accueil : l'extrait de journal affiché, passé dans `cli.py` | ✅ 6 lignes lues, 203.0.113.20 critique (R2, R3), comme le verdict affiché sous l'extrait |
+| Documentation recoupée avec le code : 16 routes, 9 pages, 25 composants, 221 tests, 11 diagrammes | ✅ README, `docs/api.md`, `docs/diagrammes.md`, `CLAUDE.md` cohérents ; §2 de ce rapport mise à jour (newman fait) |
+| Limites connues (inchangées) | ⚠️ ligne « message repeated N times » lue comme 1 échec ; `cli.py` lit seulement l'UTF-8 (le site lit aussi l'UTF-16) |

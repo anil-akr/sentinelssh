@@ -226,7 +226,8 @@ cd ../frontend && npm run lint
   des comptes (un compte reçoit 404 sur l'analyse d'un autre), les droits de l'administrateur (403 pour un simple compte),
   la révocation de la session et les fichiers piégés.
 - **Manuels** : collection Postman (`docs/testing/`, rejouée par newman : 40 requêtes, 0 échec) et parcours complets dans
-  un vrai navigateur (inscription, envois, comptes, admin, 5 largeurs d'écran).
+  un vrai navigateur (inscription, envois, comptes, admin, 5 largeurs d'écran). La collection se joue sur un serveur qui
+  vient de démarrer : rejouée tout de suite, la limite de 5 inscriptions par heure et par IP répond 429 (voulu).
 - **Robustesse** : dataset OpenSSH de [Loghub](https://github.com/logpai/loghub) (655 146 lignes).
 
 Résultats : [docs/testing/test-report.md](docs/testing/test-report.md) — 221 tests, couverture de `sentinel` à 100 %,
@@ -286,6 +287,7 @@ HTTPS) n'est pas encore prévue.
   requêtes semblent venir de Nginx.
 - Pas de durée maximale pour un compte inactif : il est gardé jusqu'à sa suppression (par son propriétaire ou par l'admin).
 - Géolocalisation approximative (base gratuite) : souvent la ville de l'opérateur, pas l'adresse exacte de l'attaquant.
+- Parsers rangés par version d'OpenSSH, avec repli de la plus récente à la plus ancienne : la version d'OpenSSH n'est pas écrite dans `auth.log`, le site essaierait donc chaque parser jusqu'à ce qu'un d'eux lise le fichier.
 - Pistes : mise en ligne (HTTPS, Nginx), audit de `sshd_config`, surveillance en temps réel, alertes par e-mail.
 
 ## Documentation
