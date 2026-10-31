@@ -175,3 +175,15 @@ def test_sample_ipv6():
     suspects = detect_sample("ipv6.log")
     assert suspects[0].ip == "2001:db8::ab"
     assert suspects[0].severity == "elevee"
+
+
+def test_success_after_four_failures_is_not_compromised():
+    # 4 échecs espacés (pas R2), puis une réussite : sous le seuil de R3.
+    assert Detector().detect(fails(4, 120) + [success(600)]) == []
+
+
+def test_five_failures_in_61_seconds_is_not_fast():
+    # 1er et 5e échec à 61 s d'écart : juste au-dessus de la fenêtre.
+    events = fails(4, 15) + [Event(START + timedelta(seconds=61), "fail",
+                                   "root", "203.0.113.1")]
+    assert Detector().detect(events) == []

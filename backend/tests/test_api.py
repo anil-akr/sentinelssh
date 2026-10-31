@@ -254,15 +254,79 @@ def test_upload_is_never_written_to_disk(logged_client, monkeypatch):
     assert response.status_code == 201
 
 
-def test_upload_empty_file_gives_empty_analysis(logged_client):
+SSH_LINE = (b"Oct 26 02:30:05 srv sshd[1]: Failed password for root"
+            b" from 203.0.113.5 port 22 ssh2\n")
+
+
+def test_upload_empty_file_is_refused(logged_client):
     response = upload(logged_client, b"", "vide.log")
-    assert response.status_code == 201
-    assert response.get_json()["suspect_count"] == 0
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Le fichier est vide"
+    assert logged_client.get("/api/analyses").get_json() == []
+
+
+@pytest.mark.parametrize("content", [
+    b"Hello world\nceci est un texte\n",           # texte quelconque
+    b'127.0.0.1 - - [10/Oct/2026:13:55:36] "GET / HTTP/1.1" 200\n',  # nginx
+    bytes(range(256)) * 20,                         # binaire
+    b"Oct 26 02:30:05 srv sshd[1]: Connection closed by 203.0.113.5\n",
+])
+def test_upload_without_ssh_attempt_is_refused(logged_client, content):
+    # Pas de verdict « rien de suspect » sur un fichier qui n'est pas un
+    # journal SSH : 400, et rien d'enregistré.
+    response = upload(logged_client, content, "pas-ssh.log")
+    assert response.status_code == 400
+    assert "Aucune tentative de connexion SSH" in response.get_json()["error"]
+    assert logged_client.get("/api/analyses").get_json() == []
 
 
 def test_upload_invalid_utf8_does_not_crash(logged_client):
-    assert upload(logged_client, b"\xff\xfe\x00 bad", "bad.txt"
-                  ).status_code == 201
+    # Un octet illisible au milieu n'empêche pas de lire les autres lignes.
+    response = upload(logged_client, b"\xc3\x28 bad\x80\n" + SSH_LINE,
+                      "bad.txt")
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize("encoded", [
+    b"\xef\xbb\xbf" + SSH_LINE,                        # UTF-8 avec BOM
+    SSH_LINE.decode().encode("utf-16"),                 # PowerShell, Windows
+])
+def test_upload_bom_and_utf16_are_read(logged_client, encoded):
+    response = upload(logged_client, encoded, "windows.log")
+    assert response.status_code == 201
+    analysis = logged_client.get(
+        f"/api/analyses/{response.get_json()['id']}").get_json()
+    assert analysis["ignored_lines"] == 0  # la 1re ligne est bien lue
+
+
+def test_upload_filename_too_long(logged_client):
+    response = upload(logged_client, SSH_LINE, "a" * 252 + ".log")
+    assert response.status_code == 400
+
+
+def test_targeted_user_with_comma_and_space(logged_client):
+    # Nom choisi par l'attaquant : la virgule ne le coupe pas en deux.
+    line = (b"Oct 26 02:30:%02d srv sshd[1]: Failed password for invalid"
+            b" user a,b c from 203.0.113.9 port 22 ssh2\n")
+    content = b"".join(line % second for second in range(5))
+    analysis_id = upload(logged_client, content, "virgule.log"
+                         ).get_json()["id"]
+    suspect = logged_client.get(f"/api/analyses/{analysis_id}"
+                                ).get_json()["suspects"][0]
+    assert suspect["users"] == ["a,b c"]
+
+
+@pytest.mark.parametrize("method, url", [
+    ("post", "/api/auth/login"),
+    ("post", "/api/auth/register"),
+    ("patch", "/api/auth/me"),
+    ("delete", "/api/auth/me"),
+])
+@pytest.mark.parametrize("body", [["a"], "texte", 42, None])
+def test_json_that_is_not_an_object_gives_400(alice_client, method, url,
+                                              body):
+    response = getattr(alice_client, method)(url, json=body)
+    assert response.status_code == 400
 
 
 def test_list_analyses(logged_client):
@@ -495,8 +559,8 @@ def test_admin_cannot_delete_analysis_of_other_user(logged_client,
 # --- Modifier son propre compte --------------------------------------------
 
 def test_rename_own_account(alice_client):
-    response = alice_client.patch("/api/auth/me",
-                                  json={"username": "alice2"})
+    response = alice_client.patch("/api/auth/me", json={
+        "username": "alice2", "current_password": USER_PASSWORD})
     assert response.status_code == 200
     body = response.get_json()
     assert body["username"] == "alice2"
@@ -506,8 +570,8 @@ def test_rename_own_account(alice_client):
 
 @pytest.mark.parametrize("body, status", [
     ({}, 400),
-    ({"username": "a b"}, 400),
-    ({"username": "ADMIN"}, 409),
+    ({"username": "a b", "current_password": USER_PASSWORD}, 400),
+    ({"username": "ADMIN", "current_password": USER_PASSWORD}, 409),
     ({"password": "court", "current_password": USER_PASSWORD}, 400),
 ])
 def test_update_own_account_errors(alice_client, body, status):
@@ -523,6 +587,16 @@ def test_change_own_password_needs_current_one(alice_client):
         assert response.status_code == 400
         assert response.get_json() == {
             "error": "Mot de passe actuel incorrect"}
+
+
+def test_rename_own_account_needs_current_password(alice_client):
+    for body in ({"username": "alice2"},
+                 {"username": "alice2", "current_password": "mauvais"}):
+        response = alice_client.patch("/api/auth/me", json=body)
+        assert response.status_code == 400
+        assert response.get_json() == {
+            "error": "Mot de passe actuel incorrect"}
+    assert alice_client.get("/api/auth/me").get_json()["username"] == "alice"
 
 
 def test_change_own_password(alice_client):
@@ -571,7 +645,12 @@ def test_create_admin_command(db):
     runner = flask_app.test_cli_runner()
     short = runner.invoke(args=["create-admin", "--username", "chef"],
                           input="court\ncourt\n")
-    assert "12 caractères" in short.output
+    assert "de 12 à 128 caractères" in short.output
+    bad_name = runner.invoke(args=["create-admin", "--username", "a b"],
+                             input="un-long-mot-de-passe\n"
+                                   "un-long-mot-de-passe\n")
+    assert "Nom d'utilisateur" in bad_name.output
+    assert db.get_user("a b") is None
     ok = runner.invoke(args=["create-admin", "--username", "chef"],
                        input="un-long-mot-de-passe\nun-long-mot-de-passe\n")
     assert "Compte administrateur créé" in ok.output
@@ -630,3 +709,12 @@ def test_missing_db_key_stops_the_app(monkeypatch, key_file):
     monkeypatch.setattr(config, "DB_KEY_FILE", key_file)
     with pytest.raises(RuntimeError):
         read_db_key()
+
+
+def test_missing_front_file_is_404(tmp_path, monkeypatch):
+    # Un script absent ne doit pas recevoir index.html (code 200).
+    (tmp_path / "index.html").write_text("<!doctype html>", encoding="utf-8")
+    monkeypatch.setattr("app.FRONTEND_DIST", tmp_path)
+    client = flask_app.test_client()
+    assert client.get("/assets/absent.js").status_code == 404
+    assert client.get("/comptes/abc").status_code == 200  # route React

@@ -121,6 +121,29 @@ def error(message, status):
     return jsonify(error=message), status
 
 
+def json_body():
+    """Le JSON reçu s'il est un objet {…}, sinon un dict vide.
+
+    Un corps absent, cassé, ou qui est une liste ou un texte (["a"])
+    donne {} : la route répond alors 400, jamais 500.
+    """
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
+def read_log_text(raw):
+    """Transforme les octets reçus en texte.
+
+    UTF-16 (reconnu à son BOM) : fichier enregistré par PowerShell ou le
+    Bloc-notes de Windows. Sinon UTF-8 ; « -sig » retire un éventuel BOM
+    qui gâcherait la date de la 1re ligne. errors="replace" : un octet
+    illisible ne fait pas planter l'analyse.
+    """
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return raw.decode("utf-16", errors="replace")
+    return raw.decode("utf-8-sig", errors="replace")
+
+
 def login_required(view):
     """Décorateur : refuse la route (401) si personne n'est connecté.
 
@@ -165,7 +188,7 @@ def read_credentials():
     manque, est vide, n'est pas du texte ou si le mot de passe est trop
     long (il n'est alors jamais haché).
     """
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     username = data.get("username")
     password = data.get("password")
     if not (isinstance(username, str) and isinstance(password, str)
@@ -210,8 +233,9 @@ def update_account(user, data, require_current_password):
     """Change le nom et/ou le mot de passe du compte user.
 
     data : {"username"?, "password"?, "current_password"?}. Pour son propre
-    compte, le mot de passe actuel est exigé avant d'en mettre un nouveau ;
-    l'admin qui réinitialise celui d'un user ne le connaît pas.
+    compte, le mot de passe actuel est exigé avant de changer le nom ou le
+    mot de passe : une session laissée ouverte ne suffit pas à s'emparer
+    du compte. L'admin qui gère un user ne connaît pas son mot de passe.
     Renvoie une réponse d'erreur, ou None si tout s'est bien passé.
     """
     username = data.get("username")
@@ -220,19 +244,18 @@ def update_account(user, data, require_current_password):
         return error("Rien à modifier : username ou password attendu", 400)
     if username is not None and username_error(username):
         return error(username_error(username), 400)
-    if password is not None:
-        if password_error(password):
-            return error(password_error(password), 400)
-        if require_current_password:
-            ip = request.remote_addr
-            if login_limiter.is_blocked(ip):
-                return error(TOO_MANY_ATTEMPTS, 429)
-            # Un mauvais mot de passe actuel compte comme un échec de
-            # connexion : impossible de le deviner par essais.
-            if not password_matches(user["username"],
-                                    data.get("current_password")):
-                login_limiter.record(ip)
-                return error("Mot de passe actuel incorrect", 400)
+    if password is not None and password_error(password):
+        return error(password_error(password), 400)
+    if require_current_password:
+        ip = request.remote_addr
+        if login_limiter.is_blocked(ip):
+            return error(TOO_MANY_ATTEMPTS, 429)
+        # Un mauvais mot de passe actuel compte comme un échec de
+        # connexion : impossible de le deviner par essais.
+        if not password_matches(user["username"],
+                                data.get("current_password")):
+            login_limiter.record(ip)
+            return error("Mot de passe actuel incorrect", 400)
 
     db = get_db()
     if username is not None:
@@ -368,7 +391,7 @@ def me():
 @login_required
 def update_me():
     """Change son nom et/ou son mot de passe (l'actuel est redemandé)."""
-    failure = update_account(g.user, request.get_json(silent=True) or {},
+    failure = update_account(g.user, json_body(),
                              require_current_password=True)
     if failure:
         return failure
@@ -393,7 +416,7 @@ def delete_my_account():
     ip = request.remote_addr
     if login_limiter.is_blocked(ip):
         return error(TOO_MANY_ATTEMPTS, 429)
-    data = request.get_json(silent=True) or {}
+    data = json_body()
     # 400 et pas 401 : 401 voudrait dire « pas connecté » pour le front.
     if not password_matches(g.user["username"], data.get("password")):
         login_limiter.record(ip)
@@ -412,15 +435,28 @@ def create_analysis():
     file = request.files.get("file")
     if file is None or not file.filename:
         return error("Aucun fichier envoyé", 400)
+    # 255 : longueur maximale d'un nom de fichier sous Linux.
+    if len(file.filename) > 255:
+        return error("Nom de fichier trop long (255 caractères maximum)",
+                     400)
 
     extension = os.path.splitext(file.filename)[1].lower()
     if extension not in config.ALLOWED_EXTENSIONS:
         return error("Extension non autorisée : .log ou .txt uniquement", 400)
 
     # Le fichier est lu en mémoire, jamais écrit sur le disque (RGPD).
-    # errors="replace" : un octet illisible ne fait pas planter l'analyse.
-    text = file.read().decode("utf-8", errors="replace")
+    raw = file.read()
+    if not raw:
+        return error("Le fichier est vide", 400)
+    text = read_log_text(raw)
     events, total_lines, ignored_lines = LogParser().parse_text(text)
+    # Aucune tentative de connexion SSH : mauvais fichier (vide de logs,
+    # autre journal, binaire…). Rien n'est enregistré : un verdict « rien
+    # de suspect » ferait croire à tort que le serveur est sain.
+    if not events:
+        return error("Aucune tentative de connexion SSH dans ce fichier. "
+                     "Est-ce bien le journal auth.log (ou secure) de votre "
+                     "serveur ?", 400)
     suspects = Detector().detect(events)
 
     analysis_id = get_db().save_analysis(g.user["id"], file.filename,
@@ -517,7 +553,7 @@ def update_user(user_id):
     user, failure = managed_user(user_id)
     if failure:
         return failure
-    failure = update_account(user, request.get_json(silent=True) or {},
+    failure = update_account(user, json_body(),
                              require_current_password=False)
     if failure:
         return failure
@@ -608,6 +644,10 @@ def frontend(path):
         abort(404)
     if path and (FRONTEND_DIST / path).is_file():
         return send_from_directory(FRONTEND_DIST, path)
+    # Fichier absent (/assets/vieux.js) : 404. Renvoyer index.html ferait
+    # lire du HTML au navigateur à la place du script.
+    if "." in path.rsplit("/", 1)[-1]:
+        abort(404)
     if (FRONTEND_DIST / "index.html").is_file():
         # /login ou /analyses/3 rechargées : React Router prend le relais.
         return send_from_directory(FRONTEND_DIST, "index.html")
@@ -620,15 +660,16 @@ def frontend(path):
 @click.option("--username", prompt="Nom d'utilisateur", default="admin")
 @click.password_option(prompt="Mot de passe")
 def create_admin(username, password):
-    """Crée un compte administrateur (mot de passe de 12 caractères min.).
+    """Crée un compte administrateur, avec les règles de l'inscription.
 
     C'est le seul moyen de créer un admin : l'inscription du site crée
     toujours un simple « user ».
     """
-    if len(password) < config.MIN_PASSWORD_LENGTH:
-        raise click.ClickException(
-            "Le mot de passe doit contenir au moins "
-            + str(config.MIN_PASSWORD_LENGTH) + " caractères.")
+    # Mêmes vérifications que l'inscription : nom de 3 à 30 caractères,
+    # mot de passe de 12 à 128 caractères.
+    for message in (username_error(username), password_error(password)):
+        if message:
+            raise click.ClickException(message)
     db = get_db()
     if db.get_user(username) is not None:
         raise click.ClickException("Ce compte existe déjà : " + username)

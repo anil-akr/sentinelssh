@@ -18,7 +18,7 @@ def main():
 
     path = sys.argv[1]
     try:
-        # errors="replace" : un octet illisible devient « ? » au lieu de
+        # errors="replace" : un octet illisible devient « � » au lieu de
         # faire planter la lecture.
         with open(path, encoding="utf-8", errors="replace") as f:
             text = f.read()

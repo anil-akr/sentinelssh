@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS suspect_ips (
     severity    TEXT    NOT NULL
                 CHECK (severity IN ('moyenne', 'elevee', 'critique')),
     rules       TEXT,  -- ex. « R2,R3 »
-    users       TEXT,  -- ex. « root,admin,anil » (3 comptes les plus visés)
+    users       TEXT,  -- JSON, ex. ["root","admin","anil"] (3 comptes les plus visés)
     first_seen  TEXT,  -- heure du journal, ex. « 2000-10-12 14:03:21 »
     last_seen   TEXT
 );

@@ -1,16 +1,25 @@
 """Lecture du journal SSH : transforme les lignes en événements Event."""
 
+import ipaddress
 import re
 from datetime import datetime
+
 from sentinel.models import Event
 
 
 class LogParser:
-    """Transforme les lignes d'un journal SSH en événements Event."""
+    """Transforme les lignes d'un journal SSH en événements Event.
+
+    Le nom d'utilisateur est choisi par l'attaquant : il peut contenir
+    des espaces, ou même « from 8.8.8.8 port 22 » pour faire accuser une
+    autre IP. (.*) est gourmand : il va jusqu'au DERNIER « from <IP> port
+    <n> » de la ligne, celui que sshd écrit après le nom ; c'est la vraie
+    IP. Elle est ensuite vérifiée par le module ipaddress.
+    """
     _FAILED = re.compile(
-        r"Failed password for (?:invalid user )?(\S+) from (\S+)")
+        r"Failed password for (?:invalid user )?(.*) from (\S+) port \d+")
     _ACCEPTED = re.compile(
-        r"Accepted (?:password|publickey) for (\S+) from (\S+)")
+        r"Accepted (?:password|publickey) for (.*) from (\S+) port \d+")
 
     def __init__(self, year=2000):
         """Garde l'année ajoutée aux dates de l'ancien format, sans année."""
@@ -44,12 +53,15 @@ class LogParser:
             kind = "success"
         try:
             time = self._read_time(line)
+            # Ce qui suit « from » doit être une vraie IPv4 ou IPv6.
+            # str() l'écrit d'une seule façon (2001:DB8::1 → 2001:db8::1).
+            ip = str(ipaddress.ip_address(match.group(2)))
         except ValueError:
-            # Date illisible (ligne coupée, autre format) : ligne ignorée
-            # plutôt que de faire planter toute l'analyse.
+            # Date illisible (ligne coupée, autre format) ou adresse qui
+            # n'est pas une IP : ligne ignorée plutôt que de faire planter
+            # toute l'analyse.
             return None
-        return Event(
-            time=time, kind=kind, user=match.group(1), ip=match.group(2))
+        return Event(time=time, kind=kind, user=match.group(1), ip=ip)
 
     def parse_text(self, text):
         """Renvoie les events, le nombre de lignes lues et ignorées.

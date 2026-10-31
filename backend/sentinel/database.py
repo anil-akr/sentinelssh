@@ -11,6 +11,7 @@ connecté et filtre dessus : un compte ne voit jamais les analyses d'un
 autre, même en devinant leur id.
 """
 
+import json
 import re
 import uuid
 from contextlib import closing
@@ -103,7 +104,9 @@ class Database:
                 " rules, users, first_seen, last_seen)"
                 " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [(analysis_id, s.ip, s.failures, s.severity,
-                  ",".join(s.rules), ",".join(s.users),
+                  # Les comptes visés en JSON : un nom choisi par
+                  # l'attaquant peut contenir une virgule.
+                  ",".join(s.rules), json.dumps(s.users),
                   s.first_seen, s.last_seen) for s in suspects])
             conn.commit()
         return analysis_id
@@ -145,7 +148,7 @@ class Database:
         for suspect_row in suspect_rows:
             suspect = dict(suspect_row)
             suspect["rules"] = split_list(suspect["rules"])
-            suspect["users"] = split_list(suspect["users"])
+            suspect["users"] = json.loads(suspect["users"])
             analysis["suspects"].append(suspect)
         return analysis
 

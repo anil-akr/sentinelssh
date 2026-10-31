@@ -3,6 +3,8 @@
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from sentinel.parser import LogParser
 
 SAMPLES = Path(__file__).parent / "samples"
@@ -174,3 +176,43 @@ def test_parse_text_counters():
 
 def test_parse_text_empty():
     assert LogParser().parse_text("") == ([], 0, 0)
+
+
+# --- Noms d'utilisateur choisis par l'attaquant --------------------------
+
+def test_username_cannot_spoof_the_ip():
+    # Le nom « x from 8.8.8.8 port 22 » ne doit pas faire accuser 8.8.8.8 :
+    # la vraie IP est celle que sshd écrit en dernier.
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for invalid user"
+        " x from 8.8.8.8 port 22 from 203.0.113.5 port 4242 ssh2")
+    assert event.ip == "203.0.113.5"
+    assert event.user == "x from 8.8.8.8 port 22"
+
+
+@pytest.mark.parametrize("user", ["admin test", "", "a,b"])
+def test_unusual_usernames_are_read(user):
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for invalid user "
+        + user + " from 203.0.113.5 port 4242 ssh2")
+    assert (event.user, event.ip) == (user, "203.0.113.5")
+
+
+def test_address_that_is_not_an_ip_is_ignored():
+    assert LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for root"
+        " from not-an-ip port 22 ssh2") is None
+
+
+def test_ipv6_is_written_one_way():
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for root"
+        " from 2001:DB8:0:0::1 port 22 ssh2")
+    assert event.ip == "2001:db8::1"
+
+
+def test_repeated_message_line_is_read():
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: message repeated 2 times: [ Failed"
+        " password for root from 203.0.113.5 port 22 ssh2]")
+    assert event.ip == "203.0.113.5"
