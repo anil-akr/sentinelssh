@@ -9,19 +9,19 @@ import SeverityLegend from '../components/SeverityLegend.jsx'
 // Extrait d'un journal SSH montré en exemple. Adresses de documentation
 // (203.0.113.x, réservées aux exemples) : aucune vraie IP.
 const LOG_LINES = [
-  'Oct 26 02:30:05 srv sshd[812]: Failed password for root from 203.0.113.20',
-  'Oct 26 02:30:09 srv sshd[812]: Failed password for admin from 203.0.113.20',
-  'Oct 26 02:30:14 srv sshd[812]: Failed password for invalid user test from 203.0.113.20',
-  'Oct 26 02:30:18 srv sshd[812]: Failed password for root from 203.0.113.20',
-  'Oct 26 02:30:22 srv sshd[812]: Failed password for ubuntu from 203.0.113.20',
-  'Oct 26 02:30:31 srv sshd[812]: Accepted password for ubuntu from 203.0.113.20',
+  'Oct 26 02:30:05 srv sshd[812]: Failed password for root from 203.0.113.20 port 52214 ssh2',
+  'Oct 26 02:30:09 srv sshd[812]: Failed password for admin from 203.0.113.20 port 52230 ssh2',
+  'Oct 26 02:30:14 srv sshd[812]: Failed password for invalid user test from 203.0.113.20 port 52241 ssh2',
+  'Oct 26 02:30:18 srv sshd[812]: Failed password for root from 203.0.113.20 port 52256 ssh2',
+  'Oct 26 02:30:22 srv sshd[812]: Failed password for ubuntu from 203.0.113.20 port 52263 ssh2',
+  'Oct 26 02:30:31 srv sshd[812]: Accepted password for ubuntu from 203.0.113.20 port 52270 ssh2',
 ]
 
 // Les étapes d'une analyse, dans l'ordre (d'où la liste numérotée <ol>).
 const STEPS = [
   {
     title: 'Envoyer le journal',
-    text: 'Créez un compte, puis envoyez depuis votre navigateur le fichier auth.log de votre serveur (.log ou .txt, 50 Mo maximum).',
+    text: 'Créez un compte, puis envoyez depuis votre navigateur le journal SSH de votre serveur Linux (auth.log ou secure, .log ou .txt, 50 Mo maximum).',
   },
   {
     title: 'Analyser',
@@ -33,7 +33,50 @@ const STEPS = [
   },
 ]
 
-// Garanties du site (sécurité et RGPD).
+// Mesures de sécurité du site (D20, D22). threat : l'attaque dont la
+// mesure protège ; tech : la technologie qui la contre. Rien n'est promis
+// qui ne soit codé et testé (pas encore de HTTPS : le site n'est pas en
+// ligne).
+const SECURITY = [
+  {
+    title: 'Base de données chiffrée',
+    text: 'Tout ce que le site enregistre est chiffré. Sans la clé, gardée à part sur le serveur, une copie de la base est illisible.',
+    threat: 'vol ou fuite de la base',
+    tech: 'SQLCipher (AES 256)',
+  },
+  {
+    title: 'Mots de passe hachés',
+    text: 'Votre mot de passe n\'est jamais enregistré : il est haché, transformé en un code d\'où on ne peut pas le retrouver. 12 caractères minimum.',
+    threat: 'fuite des mots de passe',
+    tech: 'scrypt (Werkzeug)',
+  },
+  {
+    title: 'Session protégée',
+    text: 'Le cookie de connexion est inaccessible aux scripts et aux autres sites. Il expire après 60 minutes d\'inactivité.',
+    threat: 'vol de session, CSRF',
+    tech: 'cookie HttpOnly et SameSite',
+  },
+  {
+    title: 'Force brute freinée',
+    text: 'Après 5 mots de passe faux en 15 minutes, l\'adresse IP est bloquée : SentinelSSH se protège des attaques qu\'il détecte.',
+    threat: 'force brute',
+    tech: 'limite par adresse IP',
+  },
+  {
+    title: 'Comptes cloisonnés',
+    text: 'Chaque compte ne voit que ses propres analyses. L\'administrateur gère les comptes, sans jamais lire leur contenu.',
+    threat: 'accès aux données d\'un autre compte (IDOR)',
+    tech: 'filtre SQL par compte',
+  },
+  {
+    title: 'Injections bloquées',
+    text: 'Votre journal est toujours traité comme du simple texte : il ne peut devenir ni du code SQL, ni une page, ni une commande.',
+    threat: 'injection SQL, XSS, injection de commande',
+    tech: 'requêtes paramétrées, React, ipaddress',
+  },
+]
+
+// Garanties sur les données personnelles (RGPD).
 const PROMISES = [
   {
     title: 'Aucun service extérieur',
@@ -41,7 +84,7 @@ const PROMISES = [
   },
   {
     title: 'Le fichier n\'est jamais enregistré',
-    text: 'Il est analysé en mémoire, sans fichier temporaire, puis oublié. Seules les IP suspectes sont gardées, puis supprimées après 30 jours (au démarrage du site).',
+    text: 'Il est analysé en mémoire, sans fichier temporaire, puis oublié. Seules les IP suspectes sont gardées : pour rouvrir vos analyses et repérer les récidivistes, ces IP qui reviennent d\'un journal à l\'autre. Elles sont supprimées après 30 jours (au démarrage du site).',
   },
   {
     title: 'L\'humain décide',
@@ -49,7 +92,7 @@ const PROMISES = [
   },
   {
     title: 'Vos analyses restent à vous',
-    text: 'Chaque compte ne voit que ses propres analyses. Les mots de passe sont hachés, jamais stockés en clair, et aucune adresse e-mail n\'est demandée.',
+    text: 'Elles ne servent qu\'à vous. Vous les supprimez quand vous voulez, comme votre compte, et aucune adresse e-mail n\'est demandée.',
   },
 ]
 
@@ -153,7 +196,26 @@ export default function LandingPage() {
       </section>
 
       <section className="card">
-        <h2>Ce que SentinelSSH garantit</h2>
+        <h2>Sécurité du site</h2>
+        <p className="muted section-help">
+          Un outil de sécurité doit d'abord être sûr lui-même.
+        </p>
+        <ul className="security-list">
+          {SECURITY.map((measure) => (
+            <li key={measure.title}>
+              <h3>{measure.title}</h3>
+              <p>{measure.text}</p>
+              <p className="security-threat">Contre : {measure.threat} · avec {measure.tech}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="card">
+        <h2>Vos données (RGPD)</h2>
+        <p className="muted section-help">
+          Le détail est dans la page <Link to="/confidentialite">Confidentialité</Link>.
+        </p>
         <ul className="promises">
           {PROMISES.map((promise) => (
             <li key={promise.title}>
@@ -166,8 +228,10 @@ export default function LandingPage() {
 
       <footer className="landing-footer muted">
         <p>
-          Projet de fin d'année, Holberton School Bordeaux, 2026. Python et Flask,
-          SQLite, React.
+          Projet de fin d'année d'Anil AKER, Holberton School Bordeaux, 2026 ·{' '}
+          <a href="https://github.com/anil-akr" target="_blank" rel="noreferrer">github.com/anil-akr</a>.
+          Python et Flask,
+          SQLite chiffrée (SQLCipher), React.
         </p>
         <p>
           {/* Attribution exigée par la licence CC BY 4.0 de DB-IP. */}

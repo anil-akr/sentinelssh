@@ -158,6 +158,7 @@ code {
 .overview,
 .steps,
 .promises,
+.security-list,
 .legend,
 .verdict-counts,
 .map-tooltip ul,
@@ -820,6 +821,80 @@ button:disabled:hover {
   margin: 0.4rem 0 0;
 }
 
+/* Lignes d'exemple de l'aide d'envoi : une étiquette (lue ou ignorée),
+   puis la ligne, qui défile si elle est trop longue. */
+.log-reading {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.log-reading li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.log-reading code {
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+/* Titre d'étape de l'aide d'envoi : le numéro rond des étapes de l'accueil,
+   en plus petit, devant le titre. */
+.upload-help .help-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.3rem;
+}
+
+.help-step .step-number {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.8rem;
+}
+
+/* Les deux résultats possibles de la commande de vérification. */
+.check-result {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+/* La phrase juste après la liste : un peu d'air pour ne pas coller aux lignes. */
+.log-reading + p {
+  margin-top: 0.9rem;
+}
+
+.log-tag {
+  flex: none;
+  width: 5.5rem;
+  padding: 0.1rem 0;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.log-tag-fail {
+  color: var(--critique);
+  background: var(--critique-bg);
+}
+
+.log-tag-ok {
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.log-tag-skip {
+  color: var(--muted);
+  background: var(--raised);
+}
+
 .upload-help pre,
 .command-help pre {
   margin: 0.5rem 0 0;
@@ -1036,6 +1111,58 @@ button:disabled:hover {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem 2rem;
+}
+
+/* Confidentialité : liste des mesures de sécurité, puces discrètes. */
+.privacy-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.privacy-list li + li {
+  margin-top: 0.5rem;
+}
+
+/* Sécurité du site : 3 colonnes, chaque mesure marquée d'un filet vert
+   (vert = protégé, comme le badge « aucune menace »). */
+.security-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem 1.75rem;
+}
+
+.security-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--ok);
+}
+
+.security-list h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.security-list p {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* L'attaque contrée et la techno qui la contre, en police de code,
+   juste sous le texte de la mesure. */
+.security-list .security-threat {
+  padding-top: 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ok);
+}
+
+@media (max-width: 900px) {
+  .security-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Présentation, connecté : le compte et Déconnexion dans une pastille
@@ -1796,7 +1923,8 @@ tbody tr:last-child td {
   /* Présentation : tout sur une colonne. */
   .hero,
   .steps,
-  .promises {
+  .promises,
+  .security-list {
     grid-template-columns: minmax(0, 1fr);
   }
 
