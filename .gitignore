@@ -29,3 +29,6 @@ demo/tailles/
 
 # Notes de révision personnelles (non versionnées)
 docs/revision/
+
+# Specs et plans du flux superpowers (gardés en local pour l'instant)
+docs/superpowers/
