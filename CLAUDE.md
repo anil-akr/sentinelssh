@@ -91,10 +91,10 @@ Ces sections servent à recouper tous les standups en une synthèse d'apprentiss
 ## Où en est le projet
 
 - Sprint 0 (préparation) : terminé le 12/10 (dépôt, kanban, labels, milestones, 13 issues du sprint 1, venv, `requirements.txt`).
-- Replanification du 12/10 (D12) : sprints décalés d'une semaine. Sprint 1 : 12 → 18 oct. ; Sprint 2 : 19 → 25 oct. ; Sprint 3 : 26 oct. → 1er nov. ; Sprint 4 : 2 → 8 nov. ; marge : 9 → 12 nov. ; **demo day le 13 novembre**. Date de la revue avec le SWE à confirmer.
+- Replanification du 12/10 (D12) : sprints décalés d'une semaine. Sprint 1 : 12 → 18 oct. ; Sprint 2 : 19 → 25 oct. ; Sprint 3 : 26 oct. → 1er nov. ; Sprint 4 : 2 → 8 nov. ; marge : 9 → 12 nov. ; **demo day le 13 novembre**. Revue technique avec le SWE (manual review) le **jeudi 5 novembre** (date reçue le 02/11).
 - 25/10 : changement de méthode, Claude produit le code (MR dans moins de 2 semaines) ; Anil commite et pousse lui-même.
 - Bloc 1 (moteur d'analyse, PR #19) et bloc 2 (base, API, connexion, CI, PR #20) fusionnés dans `develop` (`ed46c31`).
-- Bloc 3 (front React, thème sombre, géolocalisation DB-IP + carte (D14), page de présentation (D15), collection Postman, test Loghub, branche `feature/frontend`) : écrit et testé, voir `docs/testing/test-report.md`.
+- Bloc 3 (front React, thème sombre, géolocalisation DB-IP + carte (D14), page de présentation (D15), collection Postman, test Loghub, branche `feature/frontend`) : écrit, testé, fusionné dans `develop` le 02/11 (PR #21), voir `docs/testing/test-report.md`.
 - 27/10 : nouveau format de date (D16), accueil enrichi, aide de la commande de blocage, couleurs vives, limite d'envoi à 50 Mo et fichier gardé en mémoire (D17), carte accélérée, vérification générale (rapport de tests §8).
 - 28/10 (soir) : profils de compte (D21) : `/compte`, `/comptes`, `/comptes/:id`, modification du nom et du mot de passe, UUID, `updated_at` ; 171 tests. Base locale à recréer (schéma changé).
 - 28/10 : passage en site multi-comptes (D20) : inscription, rôles admin/user, analyses par compte, page Comptes, suppression de son compte, limitation des tentatives ; revue de code appliquée ; 146 tests ; diagrammes Mermaid, Postman et rapport de tests (§9) à jour. La base locale `backend/sentinel.db` de l'ancien schéma doit être recréée.
@@ -103,7 +103,8 @@ Ces sections servent à recouper tous les standups en une synthèse d'apprentiss
 - 29/10 (suite) : audit vérifié (55 contrôles dans le navigateur), mot de passe redemandé pour renommer son compte, `create-admin` avec les règles de l'inscription ; collection Postman passée par newman (40 requêtes, 0 échec) ; documentation refaite (README, `docs/api.md`, diagrammes et PNG, écarts dans le plan des sprints). Revue avec le SWE dans 4 jours (vers le 02/11).
 - 30/10 : accueil (technologies dans « Sécurité du site », extrait de journal réaliste, nom et GitHub), page Confidentialité (responsable du traitement), aide d'envoi en 3 étapes avec vérification par `grep`, section « Journal analysé » du README (sshd écrit le message, rsyslog le fichier) ; plugins du projet (`.claude/settings.json`) et règles des PR ; 5 commits poussés (`3042689`). Parsers OpenSSH versionnés écartés pour la v1.0 (D24).
 - 31/10 : audit complet avant la revue (rapport §13) : 221 tests, couverture 100 %, newman 40/70/0, navigateur 55/55, aucun bug. Revue avec le SWE vers le 02/11.
-- Reste : PR `feature/frontend` → `develop` (Anil, sur GitHub), fusion dans `main`, tag v1.0.0, lancement en production ; revues et rétrospectives des sprints (`docs/sprints/`, encore vides).
+- 02/11 : **v1.0.0 livrée** : PR #21 (`feature/frontend` → `develop`) et PR #22 (`develop` → `main`) fusionnées, CI verte à chaque étape, tag `v1.0.0` sur le commit de fusion `d896c49`, issue #12 fermée, branche `feature/frontend` supprimée. Revue avec le SWE fixée au jeudi 05/11.
+- Reste : lancement en production (Gunicorn) pour la démo ; revues et rétrospectives des sprints (`docs/sprints/`, encore vides) ; répétition de la démo du 13/11.
 - **À mettre à jour à chaque début de sprint.**
 
 ## Documents de référence
