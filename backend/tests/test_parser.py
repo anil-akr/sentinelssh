@@ -1,0 +1,218 @@
+"""Tests unitaires de LogParser."""
+
+from datetime import datetime
+from pathlib import Path
+
+import pytest
+
+from sentinel.parser import LogParser
+
+SAMPLES = Path(__file__).parent / "samples"
+
+
+def read_sample(name):
+    """Renvoie le texte d'un mini-journal de tests/samples."""
+    return (SAMPLES / name).read_text(encoding="utf-8")
+
+
+def test_failed_line():
+    line = ("Oct 12 14:03:21 srv sshd[1234]: Failed password for root "
+            "from 203.0.113.10 port 51122 ssh2")
+    event = LogParser().parse_line(line)
+    assert event.kind == "fail"
+    assert event.user == "root"
+    assert event.ip == "203.0.113.10"
+    assert event.time == datetime(2000, 10, 12, 14, 3, 21)
+
+
+def test_failed_invalid_user_line():
+    line = ("Oct 12 14:03:41 srv sshd[1234]: Failed password for invalid "
+            "user admin from 203.0.113.10 port 51122 ssh2")
+    event = LogParser().parse_line(line)
+    assert event.kind == "fail"
+    assert event.user == "admin"
+
+
+def test_accepted_password_line():
+    line = ("Oct 12 09:02:00 srv sshd[2002]: Accepted password for root "
+            "from 198.51.100.7 port 40010 ssh2")
+    event = LogParser().parse_line(line)
+    assert event.kind == "success"
+    assert event.user == "root"
+    assert event.ip == "198.51.100.7"
+
+
+def test_accepted_publickey_line():
+    line = ("Oct 12 09:15:00 srv sshd[2004]: Accepted publickey for anil "
+            "from 198.51.100.8 port 40102 ssh2")
+    event = LogParser().parse_line(line)
+    assert event.kind == "success"
+    assert event.user == "anil"
+
+
+def test_invalid_user_line_is_ignored():
+    # Elle décrit la même tentative que « Failed password for invalid
+    # user » : la compter doublerait les échecs.
+    line = ("Oct 12 09:01:00 srv sshd[2001]: Invalid user test "
+            "from 198.51.100.7 port 40002")
+    assert LogParser().parse_line(line) is None
+
+
+def test_unrelated_line_is_ignored():
+    line = ("Oct 12 09:00:00 srv sshd[2000]: Connection closed "
+            "by 198.51.100.7 port 40000")
+    assert LogParser().parse_line(line) is None
+
+
+def test_ipv6():
+    line = ("Oct 12 14:03:21 srv sshd[1234]: Failed password for root "
+            "from 2001:db8::ab port 51122 ssh2")
+    assert LogParser().parse_line(line).ip == "2001:db8::ab"
+
+
+def test_february_29():
+    events, _, _ = LogParser().parse_text(read_sample("leap_day.log"))
+    assert len(events) == 2
+    assert events[0].time == datetime(2000, 2, 29, 10, 0, 0)
+
+
+def test_single_digit_day():
+    line = ("Oct  2 14:03:21 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2")
+    assert LogParser().parse_line(line).time == datetime(2000, 10, 2,
+                                                         14, 3, 21)
+
+
+def test_unreadable_date_is_ignored():
+    line = "garbage: Failed password for root from 203.0.113.9 port 1 ssh2"
+    assert LogParser().parse_line(line) is None
+
+
+def test_other_year():
+    line = ("Feb 28 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2")
+    assert LogParser(year=1996).parse_line(line).time.year == 1996
+
+
+# --- Nouveau format de date (ISO 8601, Ubuntu 23.10 et plus) ----------
+
+def test_iso_failed_line():
+    line = ("2026-10-25T17:17:03.249675+01:00 srv sshd[1234]: Failed password "
+            "for root from 203.0.113.10 port 51122 ssh2")
+    event = LogParser().parse_line(line)
+    assert event.kind == "fail"
+    assert event.user == "root"
+    assert event.ip == "203.0.113.10"
+    # Vraie année gardée (pas 2000) ; microsecondes et fuseau retirés.
+    assert event.time == datetime(2026, 10, 25, 17, 17, 3)
+
+
+def test_iso_accepted_line():
+    line = ("2026-10-25T17:20:00.000001+01:00 srv sshd[1240]: Accepted "
+            "publickey for anil from 192.0.2.7 port 40000 ssh2")
+    event = LogParser().parse_line(line)
+    assert event.kind == "success"
+    assert event.time == datetime(2026, 10, 25, 17, 20, 0)
+
+
+def test_iso_unreadable_date_is_ignored():
+    # Mois 13 : commence par 4 chiffres mais la date n'existe pas.
+    line = ("2026-13-25T17:17:03.249675+01:00 srv sshd[1]: Failed password "
+            "for root from 203.0.113.9 port 1 ssh2")
+    assert LogParser().parse_line(line) is None
+
+
+def test_mixed_formats_in_one_file():
+    text = ("Oct 12 14:03:21 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "2026-10-12T14:03:31.5+02:00 srv sshd[1]: Failed password "
+            "for root from 203.0.113.9 port 1 ssh2\n")
+    events, total_lines, ignored_lines = LogParser().parse_text(text)
+    assert [e.time.year for e in events] == [2000, 2026]
+    assert (total_lines, ignored_lines) == (2, 0)
+
+
+# --- Passage du Nouvel An dans l'ancien format (sans année) -----------
+
+def test_new_year_in_old_format():
+    events, _, _ = LogParser().parse_text(read_sample("new_year.log"))
+    # Décembre = l'année d'avant (1999), janvier = 2000.
+    assert events[0].time == datetime(1999, 12, 31, 23, 59, 40)
+    assert events[-1].time == datetime(2000, 1, 1, 0, 0, 20)
+    assert events[0].time < events[-1].time
+
+
+def test_leap_day_after_new_year():
+    # Décembre 2023 → février 2024 : le 29 février tombe bien en 2000.
+    text = ("Dec 31 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "Feb 29 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n")
+    events, _, _ = LogParser().parse_text(text)
+    assert [e.time.year for e in events] == [1999, 2000]
+    assert events[1].time.day == 29
+
+
+def test_leap_day_in_a_non_leap_year_is_ignored():
+    # Journal de plus de 10 mois : le 29 février tombe en 1999.
+    text = ("Feb 29 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "Dec 31 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n"
+            "Jan  1 10:00:00 srv sshd[1]: Failed password for root "
+            "from 203.0.113.9 port 1 ssh2\n")
+    events, total_lines, ignored_lines = LogParser().parse_text(text)
+    assert len(events) == 2
+    assert (total_lines, ignored_lines) == (3, 1)
+
+
+def test_parse_text_counters():
+    events, total_lines, ignored_lines = LogParser().parse_text(
+        read_sample("clean.log"))
+    assert len(events) == 4
+    assert total_lines == 6
+    assert ignored_lines == 2
+
+
+def test_parse_text_empty():
+    assert LogParser().parse_text("") == ([], 0, 0)
+
+
+# --- Noms d'utilisateur choisis par l'attaquant --------------------------
+
+def test_username_cannot_spoof_the_ip():
+    # Le nom « x from 8.8.8.8 port 22 » ne doit pas faire accuser 8.8.8.8 :
+    # la vraie IP est celle que sshd écrit en dernier.
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for invalid user"
+        " x from 8.8.8.8 port 22 from 203.0.113.5 port 4242 ssh2")
+    assert event.ip == "203.0.113.5"
+    assert event.user == "x from 8.8.8.8 port 22"
+
+
+@pytest.mark.parametrize("user", ["admin test", "", "a,b"])
+def test_unusual_usernames_are_read(user):
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for invalid user "
+        + user + " from 203.0.113.5 port 4242 ssh2")
+    assert (event.user, event.ip) == (user, "203.0.113.5")
+
+
+def test_address_that_is_not_an_ip_is_ignored():
+    assert LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for root"
+        " from not-an-ip port 22 ssh2") is None
+
+
+def test_ipv6_is_written_one_way():
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: Failed password for root"
+        " from 2001:DB8:0:0::1 port 22 ssh2")
+    assert event.ip == "2001:db8::1"
+
+
+def test_repeated_message_line_is_read():
+    event = LogParser().parse_line(
+        "Oct 26 02:30:05 srv sshd[1]: message repeated 2 times: [ Failed"
+        " password for root from 203.0.113.5 port 22 ssh2]")
+    assert event.ip == "203.0.113.5"

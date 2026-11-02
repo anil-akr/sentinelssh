@@ -15,7 +15,20 @@ frontend/dist/
 *.db
 *.log
 !demo/demo.log
+!demo/demo-monde.log
 !backend/tests/samples/*.log
+
+# Bases de géolocalisation (téléchargées par scripts/download_geodb.sh)
+backend/data/
+
+# Fichiers de démo de plusieurs tailles (créés par demo/make_demo_files.sh)
+demo/tailles/
 
 # Système
 .DS_Store
+
+# Notes de révision personnelles (non versionnées)
+docs/revision/
+
+# Specs et plans du flux superpowers (gardés en local pour l'instant)
+docs/superpowers/
