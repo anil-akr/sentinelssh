@@ -50,6 +50,22 @@ def test_four_failures_is_not_fast():
     assert Detector().detect(fails(4, 1)) == []
 
 
+def test_iso_sample_across_new_year_is_fast():
+    # Grâce à la vraie année, le 1er janvier 2027 vient bien après le
+    # 31 décembre 2026 : les 5 échecs tiennent en 40 s.
+    suspects = detect_sample("iso.log")
+    assert suspects[0].ip == "203.0.113.30"
+    assert suspects[0].rules == ["R2"]
+
+
+def test_new_year_in_old_format_is_fast():
+    # Ancien format : 5 échecs en 40 s à cheval sur le Nouvel An.
+    suspects = detect_sample("new_year.log")
+    assert suspects[0].rules == ["R2"]
+    assert suspects[0].first_seen == "1999-12-31 23:59:40"
+    assert suspects[0].last_seen == "2000-01-01 00:00:20"
+
+
 # --- R1 : attaque persistante ------------------------------------------
 
 def test_twenty_spread_failures_is_persistent():
@@ -119,8 +135,8 @@ def test_three_most_targeted_users():
 
 def test_first_and_last_seen():
     suspect = Detector().detect(fails(5, 10))[0]
-    assert suspect.first_seen == "Oct 12 14:00:00"
-    assert suspect.last_seen == "Oct 12 14:00:40"
+    assert suspect.first_seen == "2000-10-12 14:00:00"
+    assert suspect.last_seen == "2000-10-12 14:00:40"
 
 
 def test_to_dict():
@@ -159,3 +175,15 @@ def test_sample_ipv6():
     suspects = detect_sample("ipv6.log")
     assert suspects[0].ip == "2001:db8::ab"
     assert suspects[0].severity == "elevee"
+
+
+def test_success_after_four_failures_is_not_compromised():
+    # 4 échecs espacés (pas R2), puis une réussite : sous le seuil de R3.
+    assert Detector().detect(fails(4, 120) + [success(600)]) == []
+
+
+def test_five_failures_in_61_seconds_is_not_fast():
+    # 1er et 5e échec à 61 s d'écart : juste au-dessus de la fenêtre.
+    events = fails(4, 15) + [Event(START + timedelta(seconds=61), "fail",
+                                   "root", "203.0.113.1")]
+    assert Detector().detect(events) == []

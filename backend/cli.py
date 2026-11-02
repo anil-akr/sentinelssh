@@ -18,7 +18,7 @@ def main():
 
     path = sys.argv[1]
     try:
-        # errors="replace" : un octet illisible devient « ? » au lieu de
+        # errors="replace" : un octet illisible devient « � » au lieu de
         # faire planter la lecture.
         with open(path, encoding="utf-8", errors="replace") as f:
             text = f.read()
@@ -43,7 +43,7 @@ def main():
         return 0
 
     row = "{:<40} {:>7}  {:<9} {:<9} {}"
-    print(row.format("IP", "Échecs", "Gravité", "Règles", "Comptes"))
+    print(row.format("IP", "Échecs", "Gravité", "Règles", "Comptes visés"))
     print("-" * 90)
     for s in suspects:
         print(row.format(s.ip, s.failures, s.severity,

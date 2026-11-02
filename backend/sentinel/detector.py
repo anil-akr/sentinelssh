@@ -11,8 +11,9 @@ SEVERITY_BY_RULE = {"R1": "moyenne", "R2": "elevee", "R3": "critique"}
 # Rang de chaque gravité : plus le nombre est grand, plus c'est grave.
 SEVERITY_RANK = {"moyenne": 1, "elevee": 2, "critique": 3}
 
-# Format d'affichage des heures, le même que dans le journal (sans année).
-TIME_FORMAT = "%b %d %H:%M:%S"
+# Format des heures enregistrées, avec l'année : le front peut ainsi trier
+# et calculer une durée même quand l'attaque passe le Nouvel An.
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class Detector:
