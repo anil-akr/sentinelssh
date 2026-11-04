@@ -417,14 +417,14 @@ gitGraph
     commit id: "comptes, D20-D22"
     commit id: "audit, D23"
     checkout develop
-    merge feature/frontend id: "PR à venir"
+    merge feature/frontend id: "PR #21"
     checkout main
-    merge develop id: "v1.0.0 à venir"
+    merge develop id: "PR #22, v1.0.0" tag: "v1.0.0"
 ```
 
-- `main` : stable, protégée ; elle recevra `develop` à la fin, avec le tag `v1.0.0`.
-- `develop` : intégration ; chaque fonctionnalité y arrive par une Pull Request (PR #14 à #20 fusionnées, la PR de
-  `feature/frontend` reste à ouvrir).
+- `main` : stable, protégée ; elle a reçu `develop` le 02/11/2026 (PR #22), avec le tag `v1.0.0`.
+- `develop` : intégration ; chaque fonctionnalité y arrive par une Pull Request (PR #14 à #21 fusionnées, puis
+  #23 pour la documentation).
 - `feature/…` et `fix/…` : une branche par tâche, créée depuis `develop`.
 
 ## Mise en production
@@ -446,7 +446,7 @@ flowchart LR
 
 ## Images PNG
 
-Copies des diagrammes ci-dessus, pour un document ou une présentation (régénérées le 29/10/2026).
+Copies des diagrammes ci-dessus, pour un document ou une présentation (régénérées le 29/10/2026 ; `branches-git.png` le 04/11/2026, après la v1.0.0).
 
 | Image | Diagramme |
 |---|---|
