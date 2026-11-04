@@ -123,7 +123,7 @@ Diagramme et cardinalités : [docs/diagrammes.md](docs/diagrammes.md#base-de-don
 | Production | Gunicorn |
 | Qualité | pytest, pytest-cov, pycodestyle, ESLint, GitHub Actions, Postman |
 
-Chaque choix est justifié dans le [journal des décisions](docs/decisions.md) (D1 à D23).
+Chaque choix est justifié dans le [journal des décisions](docs/decisions.md) (D1 à D24).
 
 ## Installation (développement)
 
@@ -269,10 +269,10 @@ HTTPS) n'est pas encore prévue.
 
 ## Organisation du projet
 
-- **Branches** : `main` (stable, protégée ; recevra `develop` avec le tag `v1.0.0`), `develop` (intégration), `feature/…`
+- **Branches** : `main` (stable, protégée ; a reçu `develop` le 02/11, tag `v1.0.0`), `develop` (intégration), `feature/…`
   et `fix/…` (une par tâche). Schéma : [docs/diagrammes.md](docs/diagrammes.md#branches-git).
 - **Pull Requests** relues avec une checklist, **CI** GitHub Actions à chaque push.
-- **Sprints** d'une semaine : [plan des sprints](docs/sprints/sprint-planning.md), revues et rétrospectives dans `docs/sprints/`.
+- **Sprints** d'une semaine : [plan des sprints](docs/sprints/sprint-planning.md) ; chaque Pull Request décrit ce qu'elle change, et les PR #21 et #22 (v1.0.0) ont une section « Standup » (fait, appris, décisions, difficultés, suite) ; modèles de revue et de rétrospective dans `docs/sprints/`.
 - **Suivi** : GitHub Projects (kanban), issues et milestones ; bugs avec le label `bug`.
 - **Décisions** : [journal des décisions](docs/decisions.md).
 - **Documents du projet** : `docs/stages/` (Stages 1 à 4, conception complète).
@@ -296,7 +296,7 @@ HTTPS) n'est pas encore prévue.
 |---|---|
 | [docs/api.md](docs/api.md) | Les 16 routes : corps, réponses, erreurs |
 | [docs/diagrammes.md](docs/diagrammes.md) | Cas d'utilisation, architecture, base, classes, séquences, CI, branches, production (PNG dans `docs/images/`) |
-| [docs/decisions.md](docs/decisions.md) | Journal des décisions D1 à D23, avec les options écartées |
+| [docs/decisions.md](docs/decisions.md) | Journal des décisions D1 à D24, avec les options écartées |
 | [docs/testing/test-report.md](docs/testing/test-report.md) | Rapport de tests et audit complet (§12) |
 | [docs/testing/sentinelssh.postman_collection.json](docs/testing/sentinelssh.postman_collection.json) | Collection Postman |
 | [docs/sprints/sprint-planning.md](docs/sprints/sprint-planning.md) | Plan des sprints |

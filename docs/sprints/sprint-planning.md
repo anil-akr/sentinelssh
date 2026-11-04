@@ -15,7 +15,7 @@ Rôles (projet individuel, Anil AKER) : PM = chef de projet, SCM = gestion du co
 > - T4.11 (bonus) : la limitation des tentatives de connexion est faite (D20) ; l'export CSV ne l'est pas ;
 > - ajouts hors plan : géolocalisation et carte (D14), page de présentation (D15, D19), nouveau format de date (D16),
 >   profils de compte (D21), sécurité de la session et base chiffrée (D22), audit complet (D23) ;
-> - les tags de fin de sprint (`v0.1.0` à `v0.3.0`) n'ont pas été posés ; `v1.0.0` le sera à la fusion dans `main`.
+> - les tags de fin de sprint (`v0.1.0` à `v0.3.0`) n'ont pas été posés ; `v1.0.0` a été posé le 02/11 à la fusion dans `main` (PR #22).
 
 | Sprint | Dates | Objectif | Points prévus | Jalon |
 |---|---|---|---|---|
